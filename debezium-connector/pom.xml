@@ -12,7 +12,7 @@
     <packaging>jar</packaging>
 
     <properties>
-        <debezium.version>1.9.8.Final</debezium.version>
+        <debezium.version>3.3.0.Final</debezium.version>
         <jsqlparser.version>2.1</jsqlparser.version>
         <protobuf.version>3.8.0</protobuf.version>
         <dameng.version>8.1.1.49</dameng.version>
