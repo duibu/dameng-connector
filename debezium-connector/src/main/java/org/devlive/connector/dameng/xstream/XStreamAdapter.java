@@ -69,7 +69,7 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
 
     @Override
     public OffsetContext.Loader<OracleOffsetContext> getOffsetContextLoader() {
-        return new XStreamOracleOffsetContextLoader(connectorConfig);
+        return new XStreamDamengOffsetContextLoader(connectorConfig);
     }
 
     @Override
@@ -161,7 +161,7 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
 
     @Override
     public OracleOffsetContext copyOffset(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext) {
-        return new XStreamOracleOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
+        return new XStreamDamengOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
     }
 
 }

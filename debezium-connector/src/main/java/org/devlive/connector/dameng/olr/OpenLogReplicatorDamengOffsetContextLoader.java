@@ -20,11 +20,11 @@ import java.util.Map;
  *
  * @author Chris Cranford
  */
-public class OpenLogReplicatorOracleOffsetContextLoader implements OffsetContext.Loader<OracleOffsetContext> {
+public class OpenLogReplicatorDamengOffsetContextLoader implements OffsetContext.Loader<OracleOffsetContext> {
 
     private final OracleConnectorConfig connectorConfig;
 
-    public OpenLogReplicatorOracleOffsetContextLoader(OracleConnectorConfig connectorConfig) {
+    public OpenLogReplicatorDamengOffsetContextLoader(OracleConnectorConfig connectorConfig) {
         this.connectorConfig = connectorConfig;
     }
 

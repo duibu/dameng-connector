@@ -8,7 +8,7 @@ package org.devlive.connector.dameng.antlr.listener;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParserBaseListener;
 import io.debezium.relational.TableId;
-import org.devlive.connector.dameng.antlr.OracleDdlParser;
+import org.devlive.connector.dameng.antlr.DamengDdlParser;
 
 import static org.devlive.connector.dameng.antlr.listener.ParserUtils.getTableName;
 
@@ -20,9 +20,9 @@ public class DropTableParserListener
 {
     private final String catalogName;
     private final String schemaName;
-    private final OracleDdlParser parser;
+    private final DamengDdlParser parser;
 
-    DropTableParserListener(final String catalogName, final String schemaName, final OracleDdlParser parser)
+    DropTableParserListener(final String catalogName, final String schemaName, final DamengDdlParser parser)
     {
         this.catalogName = catalogName;
         this.schemaName = schemaName;

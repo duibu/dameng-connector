@@ -8,7 +8,7 @@ package org.devlive.connector.dameng.antlr.listener;
 import io.debezium.data.Envelope;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
 import io.debezium.relational.Column;
-import org.devlive.connector.dameng.antlr.OracleDmlParser;
+import org.devlive.connector.dameng.antlr.DamengDmlParser;
 import org.devlive.connector.dameng.logminer.valueholder.LogMinerColumnValue;
 import org.devlive.connector.dameng.logminer.valueholder.LogMinerColumnValueWrapper;
 import org.devlive.connector.dameng.logminer.valueholder.LogMinerDmlEntry;
@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 public class DeleteParserListener
         extends BaseDmlStringParserListener
 {
-    DeleteParserListener(final String catalogName, final String schemaName, final OracleDmlParser parser)
+    DeleteParserListener(final String catalogName, final String schemaName, final DamengDmlParser parser)
     {
         super(catalogName, schemaName, parser);
     }

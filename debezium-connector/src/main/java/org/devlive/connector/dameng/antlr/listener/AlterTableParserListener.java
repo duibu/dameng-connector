@@ -12,7 +12,7 @@ import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.text.ParsingException;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
-import org.devlive.connector.dameng.antlr.OracleDdlParser;
+import org.devlive.connector.dameng.antlr.DamengDdlParser;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +29,7 @@ public class AlterTableParserListener
     private final List<ParseTreeListener> listeners;
     private final String catalogName;
     private final String schemaName;
-    private final OracleDdlParser parser;
+    private final DamengDdlParser parser;
     private TableEditor tableEditor;
     private ColumnDefinitionParserListener columnDefinitionParserListener;
     private List<ColumnEditor> columnEditors;
@@ -43,7 +43,7 @@ public class AlterTableParserListener
      * @param parser Oracle Antlr parser
      * @param listeners registered listeners
      */
-    AlterTableParserListener(final String catalogName, final String schemaName, final OracleDdlParser parser,
+    AlterTableParserListener(final String catalogName, final String schemaName, final DamengDdlParser parser,
             final List<ParseTreeListener> listeners)
     {
         this.catalogName = catalogName;

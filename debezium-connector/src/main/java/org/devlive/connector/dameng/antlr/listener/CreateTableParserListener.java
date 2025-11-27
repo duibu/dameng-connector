@@ -12,7 +12,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
-import org.devlive.connector.dameng.antlr.OracleDdlParser;
+import org.devlive.connector.dameng.antlr.DamengDdlParser;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,11 +23,11 @@ public class CreateTableParserListener
     private final List<ParseTreeListener> listeners;
     private final String catalogName;
     private final String schemaName;
-    private final OracleDdlParser parser;
+    private final DamengDdlParser parser;
     private TableEditor tableEditor;
     private ColumnDefinitionParserListener columnDefinitionParserListener;
 
-    CreateTableParserListener(final String catalogName, final String schemaName, final OracleDdlParser parser,
+    CreateTableParserListener(final String catalogName, final String schemaName, final DamengDdlParser parser,
             final List<ParseTreeListener> listeners)
     {
         this.catalogName = catalogName;

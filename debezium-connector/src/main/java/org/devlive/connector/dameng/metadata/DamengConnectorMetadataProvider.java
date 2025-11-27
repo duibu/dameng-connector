@@ -8,10 +8,10 @@ package org.devlive.connector.dameng.metadata;
 import io.debezium.metadata.ConnectorMetadata;
 import io.debezium.metadata.ConnectorMetadataProvider;
 
-public class OracleConnectorMetadataProvider implements ConnectorMetadataProvider {
+public class DamengConnectorMetadataProvider implements ConnectorMetadataProvider {
 
     @Override
     public ConnectorMetadata getConnectorMetadata() {
-        return new OracleConnectorMetadata();
+        return new DamengConnectorMetadata();
     }
 }

@@ -12,7 +12,7 @@ import io.debezium.ddl.parser.oracle.generated.PlSqlParserBaseListener;
 import io.debezium.text.ParsingException;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
-import org.devlive.connector.dameng.antlr.OracleDmlParser;
+import org.devlive.connector.dameng.antlr.DamengDdlParser;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -20,23 +20,23 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * This class is Oracle main DML parser listener class.
+ * This class is Oracle main DDL parser listener class.
  * It instantiates supported listeners, walks listeners through every parsing rule and collects parsing exceptions.
  */
 @SuppressFBWarnings(value = "EI_EXPOSE_REP")
-public class OracleDmlParserListener
+public class DamengDdlParserListener
         extends PlSqlParserBaseListener
         implements AntlrDdlParserListener
 {
     private final List<ParseTreeListener> listeners = new CopyOnWriteArrayList<>();
     private final Collection<ParsingException> errors = new ArrayList<>();
 
-    public OracleDmlParserListener(final String catalogName, final String schemaName,
-            final OracleDmlParser parser)
+    public DamengDdlParserListener(final String catalogName, final String schemaName,
+                                   final DamengDdlParser parser)
     {
-        listeners.add(new InsertParserListener(catalogName, schemaName, parser));
-        listeners.add(new UpdateParserListener(catalogName, schemaName, parser));
-        listeners.add(new DeleteParserListener(catalogName, schemaName, parser));
+        listeners.add(new CreateTableParserListener(catalogName, schemaName, parser, listeners));
+        listeners.add(new AlterTableParserListener(catalogName, schemaName, parser, listeners));
+        listeners.add(new DropTableParserListener(catalogName, schemaName, parser));
     }
 
     @Override

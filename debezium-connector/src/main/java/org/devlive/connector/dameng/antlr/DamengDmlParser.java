@@ -17,14 +17,14 @@ import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.devlive.connector.dameng.DamengValueConverters;
-import org.devlive.connector.dameng.antlr.listener.OracleDmlParserListener;
+import org.devlive.connector.dameng.antlr.listener.DamengDmlParserListener;
 import org.devlive.connector.dameng.logminer.valueholder.LogMinerDmlEntry;
 
 /**
  * This is the main Oracle Antlr DML parser
  */
 @SuppressFBWarnings(value = {"EI_EXPOSE_REP2", "EI_EXPOSE_REP"})
-public class OracleDmlParser
+public class DamengDmlParser
         extends AntlrDdlParser<PlSqlLexer, PlSqlParser>
 {
     protected final String catalogName;
@@ -32,7 +32,7 @@ public class OracleDmlParser
     private final DamengValueConverters converter;
     private LogMinerDmlEntry dmlEntry;
 
-    public OracleDmlParser(boolean throwErrorsFromTreeWalk, final String catalogName, final String schemaName, DamengValueConverters converter)
+    public DamengDmlParser(boolean throwErrorsFromTreeWalk, final String catalogName, final String schemaName, DamengValueConverters converter)
     {
         super(throwErrorsFromTreeWalk);
         this.catalogName = catalogName;
@@ -69,7 +69,7 @@ public class OracleDmlParser
     @Override
     protected AntlrDdlParserListener createParseTreeWalkerListener()
     {
-        return new OracleDmlParserListener(catalogName, schemaName, this);
+        return new DamengDmlParserListener(catalogName, schemaName, this);
     }
 
     @Override

@@ -3,8 +3,9 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package org.devlive.connector.dameng.logminer.buffered;
+package org.devlive.connector.dameng.logminer.unbuffered;
 
+import io.debezium.common.annotation.Incubating;
 import io.debezium.connector.oracle.CommitScn;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleOffsetContext;
@@ -16,13 +17,16 @@ import io.debezium.pipeline.txmetadata.TransactionContext;
 import java.util.Map;
 
 /**
+ * An {@link OffsetContext.Loader} implementation for the unbuffered Oracle LogMiner adapter.
+ *
  * @author Chris Cranford
  */
-public class BufferedLogMinerOracleOffsetContextLoader implements OffsetContext.Loader<OracleOffsetContext> {
+@Incubating
+public class UnbufferedLogMinerDamengOffsetContextLoader implements OffsetContext.Loader<OracleOffsetContext> {
 
     private final OracleConnectorConfig connectorConfig;
 
-    public BufferedLogMinerOracleOffsetContextLoader(OracleConnectorConfig connectorConfig) {
+    public UnbufferedLogMinerDamengOffsetContextLoader(OracleConnectorConfig connectorConfig) {
         this.connectorConfig = connectorConfig;
     }
 
@@ -37,10 +41,9 @@ public class BufferedLogMinerOracleOffsetContextLoader implements OffsetContext.
                 .snapshot(loadSnapshot(offset).orElse(null))
                 .snapshotCompleted(loadSnapshotCompleted(offset))
                 .transactionContext(TransactionContext.load(offset))
+                .incrementalSnapshotContext(SignalBasedIncrementalSnapshotContext.load(offset))
                 .transactionId(OracleOffsetContext.loadTransactionId(offset))
                 .transactionSequence(OracleOffsetContext.loadTransactionSequence(offset))
-                .incrementalSnapshotContext(SignalBasedIncrementalSnapshotContext.load(offset))
                 .build();
     }
-
 }

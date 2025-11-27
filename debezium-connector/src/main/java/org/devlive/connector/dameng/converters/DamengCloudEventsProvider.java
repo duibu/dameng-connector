@@ -16,7 +16,7 @@ import io.debezium.converters.spi.SerializerType;
  *
  * @author Chris Cranford
  */
-public class OracleCloudEventsProvider implements CloudEventsProvider {
+public class DamengCloudEventsProvider implements CloudEventsProvider {
     @Override
     public String getName() {
         return Module.name();
@@ -25,6 +25,6 @@ public class OracleCloudEventsProvider implements CloudEventsProvider {
     @Override
     public CloudEventsMaker createMaker(RecordAndMetadata recordAndMetadata, SerializerType dataContentType, String dataSchemaUriBase,
                                         String cloudEventsSchemaName) {
-        return new OracleCloudEventsMaker(recordAndMetadata, dataContentType, dataSchemaUriBase, cloudEventsSchemaName);
+        return new DamengCloudEventsMaker(recordAndMetadata, dataContentType, dataSchemaUriBase, cloudEventsSchemaName);
     }
 }

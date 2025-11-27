@@ -38,7 +38,7 @@ public class BufferedLogMinerAdapter extends AbstractLogMinerStreamingAdapter {
 
     @Override
     public OffsetContext.Loader<OracleOffsetContext> getOffsetContextLoader() {
-        return new BufferedLogMinerOracleOffsetContextLoader(connectorConfig);
+        return new BufferedLogMinerDamengOffsetContextLoader(connectorConfig);
     }
 
     @Override
@@ -64,7 +64,7 @@ public class BufferedLogMinerAdapter extends AbstractLogMinerStreamingAdapter {
 
     @Override
     public OracleOffsetContext copyOffset(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext) {
-        return new BufferedLogMinerOracleOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
+        return new BufferedLogMinerDamengOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
     }
 
 }

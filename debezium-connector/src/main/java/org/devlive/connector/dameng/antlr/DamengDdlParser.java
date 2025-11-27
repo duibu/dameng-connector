@@ -17,7 +17,7 @@ import io.debezium.relational.Tables;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
-import org.devlive.connector.dameng.antlr.listener.OracleDdlParserListener;
+import org.devlive.connector.dameng.antlr.listener.DamengDdlParserListener;
 
 import java.sql.Types;
 import java.util.Arrays;
@@ -27,18 +27,18 @@ import java.util.Locale;
  * This is the main Oracle Antlr DDL parser
  */
 @SuppressFBWarnings(value = {"EI_EXPOSE_REP2", "EI_EXPOSE_REP"})
-public class OracleDdlParser
+public class DamengDdlParser
         extends AntlrDdlParser<PlSqlLexer, PlSqlParser>
 {
     private String catalogName;
     private String schemaName;
 
-    public OracleDdlParser()
+    public DamengDdlParser()
     {
         super(true);
     }
 
-    public OracleDdlParser(
+    public DamengDdlParser(
             boolean throwErrorsFromTreeWalk, final String catalogName, final String schemaName)
     {
         super(throwErrorsFromTreeWalk);
@@ -64,7 +64,7 @@ public class OracleDdlParser
     @Override
     protected AntlrDdlParserListener createParseTreeWalkerListener()
     {
-        return new OracleDdlParserListener(catalogName, schemaName, this);
+        return new DamengDdlParserListener(catalogName, schemaName, this);
     }
 
     @Override

@@ -9,7 +9,7 @@ import io.debezium.data.Envelope;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
 import io.debezium.relational.Column;
 import io.debezium.text.ParsingException;
-import org.devlive.connector.dameng.antlr.OracleDmlParser;
+import org.devlive.connector.dameng.antlr.DamengDmlParser;
 import org.devlive.connector.dameng.logminer.valueholder.LogMinerColumnValue;
 import org.devlive.connector.dameng.logminer.valueholder.LogMinerColumnValueWrapper;
 import org.devlive.connector.dameng.logminer.valueholder.LogMinerDmlEntry;
@@ -34,7 +34,7 @@ import static io.debezium.antlr.AntlrDdlParser.getText;
 public class UpdateParserListener
         extends BaseDmlStringParserListener
 {
-    UpdateParserListener(String catalogName, String schemaName, OracleDmlParser parser)
+    UpdateParserListener(String catalogName, String schemaName, DamengDmlParser parser)
     {
         super(catalogName, schemaName, parser);
     }

@@ -11,7 +11,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.text.ParsingException;
 import org.devlive.connector.dameng.DamengValueConverters;
-import org.devlive.connector.dameng.antlr.OracleDmlParser;
+import org.devlive.connector.dameng.antlr.DamengDmlParser;
 import org.devlive.connector.dameng.logminer.valueholder.LogMinerColumnValueImpl;
 import org.devlive.connector.dameng.logminer.valueholder.LogMinerColumnValueWrapper;
 
@@ -29,13 +29,13 @@ abstract class BaseDmlParserListener<T>
     protected String catalogName;
     protected String schemaName;
     protected Table table;
-    protected OracleDmlParser parser;
+    protected DamengDmlParser parser;
     final DamengValueConverters converter;
     String alias;
     Map<T, LogMinerColumnValueWrapper> newColumnValues = new LinkedHashMap<>();
     Map<T, LogMinerColumnValueWrapper> oldColumnValues = new LinkedHashMap<>();
 
-    BaseDmlParserListener(String catalogName, String schemaName, OracleDmlParser parser)
+    BaseDmlParserListener(String catalogName, String schemaName, DamengDmlParser parser)
     {
         this.parser = parser;
         this.catalogName = catalogName;

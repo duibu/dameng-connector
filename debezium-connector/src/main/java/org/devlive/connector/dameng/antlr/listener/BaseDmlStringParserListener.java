@@ -7,7 +7,7 @@ package org.devlive.connector.dameng.antlr.listener;
 
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
 import io.debezium.relational.Column;
-import org.devlive.connector.dameng.antlr.OracleDmlParser;
+import org.devlive.connector.dameng.antlr.DamengDmlParser;
 import org.devlive.connector.dameng.logminer.valueholder.LogMinerColumnValueWrapper;
 
 /**
@@ -18,7 +18,7 @@ abstract class BaseDmlStringParserListener
 {
     boolean isUpdate;
 
-    BaseDmlStringParserListener(String catalogName, String schemaName, OracleDmlParser parser)
+    BaseDmlStringParserListener(String catalogName, String schemaName, DamengDmlParser parser)
     {
         super(catalogName, schemaName, parser);
     }

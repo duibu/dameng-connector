@@ -62,11 +62,11 @@ public class UnbufferedLogMinerAdapter extends AbstractLogMinerStreamingAdapter 
 
     @Override
     public OffsetContext.Loader<OracleOffsetContext> getOffsetContextLoader() {
-        return new UnbufferedLogMinerOracleOffsetContextLoader(connectorConfig);
+        return new UnbufferedLogMinerDamengOffsetContextLoader(connectorConfig);
     }
 
     @Override
     public OracleOffsetContext copyOffset(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext) {
-        return new UnbufferedLogMinerOracleOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
+        return new UnbufferedLogMinerDamengOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
     }
 }

@@ -16,7 +16,7 @@ import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.SchemaNameAdjuster;
-import org.devlive.connector.dameng.antlr.OracleDdlParser;
+import org.devlive.connector.dameng.antlr.DamengDdlParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +54,7 @@ public class DamengDatabaseSchema
     @Override
     protected DdlParser getDdlParser()
     {
-        return new OracleDdlParser();
+        return new DamengDdlParser();
     }
 
     @Override

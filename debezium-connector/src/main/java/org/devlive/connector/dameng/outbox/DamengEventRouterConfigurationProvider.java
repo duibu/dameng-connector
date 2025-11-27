@@ -19,7 +19,7 @@ import java.util.Map;
  *
  * @author Chris Cranford
  */
-public class OracleEventRouterConfigurationProvider implements EventRouterConfigurationProvider {
+public class DamengEventRouterConfigurationProvider implements EventRouterConfigurationProvider {
 
     private Configuration configuration;
 

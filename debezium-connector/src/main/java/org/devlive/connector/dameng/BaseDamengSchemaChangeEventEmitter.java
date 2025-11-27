@@ -12,7 +12,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
-import org.devlive.connector.dameng.antlr.OracleDdlParser;
+import org.devlive.connector.dameng.antlr.DamengDdlParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,10 +24,10 @@ import java.util.Set;
  * @author Gunnar Morling
  */
 @SuppressFBWarnings(value = {"EI_EXPOSE_REP2"})
-public class BaseOracleSchemaChangeEventEmitter
+public class BaseDamengSchemaChangeEventEmitter
         implements SchemaChangeEventEmitter
 {
-    private static final Logger LOGGER = LoggerFactory.getLogger(BaseOracleSchemaChangeEventEmitter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(BaseDamengSchemaChangeEventEmitter.class);
 
     private final DamengOffsetContext offsetContext;
     private final TableId tableId;
@@ -36,9 +36,9 @@ public class BaseOracleSchemaChangeEventEmitter
     private final String ddlText;
     private final String commandType;
 
-    public BaseOracleSchemaChangeEventEmitter(DamengOffsetContext offsetContext, TableId tableId,
-            String sourceDatabaseName, String objectOwner, String ddlText,
-            String commandType)
+    public BaseDamengSchemaChangeEventEmitter(DamengOffsetContext offsetContext, TableId tableId,
+                                              String sourceDatabaseName, String objectOwner, String ddlText,
+                                              String commandType)
     {
         this.offsetContext = offsetContext;
         this.tableId = tableId;
@@ -59,7 +59,7 @@ public class BaseOracleSchemaChangeEventEmitter
 
         Tables tables = new Tables();
 
-        OracleDdlParser parser = new OracleDdlParser();
+        DamengDdlParser parser = new DamengDdlParser();
         parser.setCurrentDatabase(sourceDatabaseName);
         parser.setCurrentSchema(objectOwner);
         parser.parse(ddlText, tables);

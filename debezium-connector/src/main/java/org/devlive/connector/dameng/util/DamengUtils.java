@@ -12,7 +12,7 @@ import io.debezium.util.Strings;
  *
  * @author Chris Cranford
  */
-public class OracleUtils {
+public class DamengUtils {
 
     /**
      * Get the object name using Oracle case-semantics. If the name is quoted, its case is left as is,
@@ -44,6 +44,6 @@ public class OracleUtils {
         return objectName.startsWith("\"") && objectName.endsWith("\"") && objectName.length() <= 2;
     }
 
-    private OracleUtils() {
+    private DamengUtils() {
     }
 }

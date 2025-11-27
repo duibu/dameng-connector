@@ -12,7 +12,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.metadata.ConnectorDescriptor;
 import io.debezium.metadata.ConnectorMetadata;
 
-public class OracleConnectorMetadata implements ConnectorMetadata {
+public class DamengConnectorMetadata implements ConnectorMetadata {
 
     @Override
     public ConnectorDescriptor getConnectorDescriptor() {

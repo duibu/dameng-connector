@@ -17,7 +17,7 @@ import java.util.Set;
 /**
  * @author Chris Cranford
  */
-public class OracleCloudEventsMaker extends CloudEventsMaker {
+public class DamengCloudEventsMaker extends CloudEventsMaker {
 
     public static final String SCN_KEY = "scn";
     public static final String COMMIT_SCN_KEY = "commit_scn";
@@ -28,7 +28,7 @@ public class OracleCloudEventsMaker extends CloudEventsMaker {
             COMMIT_SCN_KEY,
             LCR_POSITION_KEY);
 
-    public OracleCloudEventsMaker(RecordAndMetadata recordAndMetadata, SerializerType dataContentType, String dataSchemaUriBase,
+    public DamengCloudEventsMaker(RecordAndMetadata recordAndMetadata, SerializerType dataContentType, String dataSchemaUriBase,
                                   String cloudEventsSchemaName) {
         super(recordAndMetadata, dataContentType, dataSchemaUriBase, cloudEventsSchemaName, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
     }
