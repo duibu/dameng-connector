@@ -37,7 +37,7 @@ public class ArchiveDestinationNameResolver {
      *
      * @param connection the database connection, should not be {@code null}
      */
-    public void validate(OracleConnection connection) {
+    public void validate(DamengConnection connection) {
         if (!destinationName.resolved()) {
             destinationName = resolveDestinationName(connection);
         }
@@ -51,7 +51,7 @@ public class ArchiveDestinationNameResolver {
             else if (!connection.isOnlyOneArchiveLogDestinationValid()) {
                 LOGGER.warn("There are multiple valid archive log destinations. " +
                         "Please add '{}' to the connector configuration to avoid log availability problems.",
-                        OracleConnectorConfig.ARCHIVE_DESTINATION_NAME.name());
+                        DamengConnectorConfig.ARCHIVE_DESTINATION_NAME.name());
             }
         }
         catch (SQLException e) {
@@ -65,14 +65,14 @@ public class ArchiveDestinationNameResolver {
      * @param connection the database connection, should not be {@code null}
      * @return the destination name to be used, may be {@code null}
      */
-    public String getDestinationName(OracleConnection connection) {
+    public String getDestinationName(DamengConnection connection) {
         if (!destinationName.resolved()) {
             destinationName = resolveDestinationName(connection);
         }
         return destinationName.value();
     }
 
-    private ResolvedDestinationName resolveDestinationName(OracleConnection connection) {
+    private ResolvedDestinationName resolveDestinationName(DamengConnection connection) {
         try {
             if (!Collect.isNullOrEmpty(destinationNames)) {
                 for (String destinationName : destinationNames) {

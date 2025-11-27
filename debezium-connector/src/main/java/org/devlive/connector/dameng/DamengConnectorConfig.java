@@ -23,10 +23,10 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
-import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.devlive.connector.dameng.logminer.HistoryRecorder;
 import org.devlive.connector.dameng.logminer.NeverHistoryRecorder;
 import org.devlive.connector.dameng.logminer.SqlUtils;
+import org.devlive.connector.dameng.logminer.buffered.infinispan.RemoteInfinispanCacheProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +39,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Connector configuration for Oracle.
+ * Connector configuration for dameng.
  *
  * @author Gunnar Morling
  */
@@ -138,8 +138,8 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 7))
             .withDescription("The adapter to use when capturing changes from the database. "
                     + "Options include: "
-                    + "'logminer': (the default) to capture changes using native Oracle LogMiner; "
-                    + "'xstream' to capture changes using Oracle XStreams");
+                    + "'logminer': (the default) to capture changes using native dameneg LogMiner; "
+                    + "'xstream' to capture changes using dameng XStreams");
 
     public static final Field LOG_MINING_STRATEGY = Field.create("log.mining.strategy")
             .withDisplayName("Log Mining Strategy")
@@ -170,7 +170,7 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "sessions. By default, all transactions are retained.");
 
     public static final Field RAC_NODES = Field.create("rac.nodes")
-            .withDisplayName("Oracle RAC nodes")
+            .withDisplayName("Dameng RAC nodes")
             .withType(Type.STRING)
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
@@ -485,7 +485,7 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "The maximum number of milliseconds that a LogMiner session lives for before being restarted. Defaults to 0 (indefinite until a log switch occurs)");
 
     public static final Field LOG_MINING_RESTART_CONNECTION = Field.create("log.mining.restart.connection")
-            .withDisplayName("Restarts Oracle database connection when reaching maximum session time or database log switch")
+            .withDisplayName("Restarts Dameng database connection when reaching maximum session time or database log switch")
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
@@ -514,7 +514,7 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Specifies how the filter configuration is applied to the LogMiner database query. " + System.lineSeparator() +
                     "none - The query does not apply any schema or table filters, all filtering is at runtime by the connector." + System.lineSeparator() +
                     "in - The query uses SQL in-clause expressions to specify the schema or table filters." + System.lineSeparator() +
-                    "regex - The query uses Oracle REGEXP_LIKE expressions to specify the schema or table filters." + System.lineSeparator());
+                    "regex - The query uses Dameng REGEXP_LIKE expressions to specify the schema or table filters." + System.lineSeparator());
 
     public static final Field LOG_MINING_READ_ONLY = Field.createInternal("log.mining.read.only")
             .withDisplayName("Runs the connector in read-only mode")
@@ -679,7 +679,7 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withWidth(Width.SHORT)
             .withDefault(false)
             .withImportance(Importance.LOW)
-            .withDescription("When Oracle is configured to use EXTENDED string sizes, there are some use cases where LogMiner will " +
+            .withDescription("When Dameng is configured to use EXTENDED string sizes, there are some use cases where LogMiner will " +
                     "not escape single quotes within a column value, which will lead to value truncation.");
 
     public static final Field LOG_MINING_CLIENTID_INCLUDE_LIST = Field.create("log.mining.clientid.include.list")
@@ -914,6 +914,7 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Configuration jdbcConfig;
     private final ConnectorAdapter connectorAdapter;
     private final String snapshotEnhancementToken;
+    private final SnapshotLockingMode snapshotLockingMode;
     // LogMiner options
     private final LogMiningStrategy logMiningStrategy;
     private final long logMiningHistoryRetentionHours;
@@ -927,6 +928,7 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Duration logMiningSleepTimeMin;
     private final Duration logMiningSleepTimeMax;
     private final Duration logMiningSleepTimeDefault;
+    private final boolean logMiningBufferDropOnStop;
     private final Duration logMiningSleepTimeIncrement;
     private final Duration logMiningTransactionRetention;
     private final Long autoCommitTimeout;
@@ -953,6 +955,7 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningHistoryRecorder = resolveLogMiningHistoryRecorder(config);
         this.jdbcConfig = config.subset(DATABASE_CONFIG_PREFIX, true);
         this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
+        this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
 
         // LogMiner
         this.connectorAdapter = ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER));
@@ -968,6 +971,7 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningSleepTimeMin = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_MIN_MS));
         this.logMiningSleepTimeMax = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_MAX_MS));
         this.logMiningSleepTimeDefault = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_DEFAULT_MS));
+        this.logMiningBufferDropOnStop = config.getBoolean(LOG_MINING_BUFFER_DROP_ON_STOP);
         this.logMiningSleepTimeIncrement = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_INCREMENT_MS));
         this.logMiningTransactionRetention = Duration.ofHours(config.getInteger(LOG_MINING_TRANSACTION_RETENTION));
         this.dmlParser = LogMiningDmlParser.parse(config.getString(LOG_MINING_DML_PARSER));
@@ -1265,6 +1269,11 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
         return snapshotMode;
     }
 
+    @Override
+    public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
+        return Optional.ofNullable(snapshotLockingMode);
+    }
+
     /**
      * Returns whether table name case is insensitive or not.  The method may return {@code null}
      * which indicates the connector configuration does not specify a value and should therefore
@@ -1281,7 +1290,7 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     @Override
-    protected HistoryRecordComparator getHistoryRecordComparator() {
+    public HistoryRecordComparator getHistoryRecordComparator() {
         return new HistoryRecordComparator() {
             @Override
             protected boolean isPositionAtOrBefore(Document recorded, Document desired) {
@@ -1473,6 +1482,9 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     private static boolean isBufferedLogMiner(Configuration config) {
         return ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)));
+    }
+    public boolean isLogMiningBufferDropOnStop() {
+        return logMiningBufferDropOnStop;
     }
 
     public enum IntervalHandlingMode implements EnumeratedValue {
@@ -1868,8 +1880,7 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
     }
 
-    public enum ConnectorAdapter
-            implements EnumeratedValue {
+    public enum ConnectorAdapter implements EnumeratedValue {
         /**
          * This is based on XStream API.
          */
@@ -1878,9 +1889,15 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
             public String getConnectionUrl() {
                 return "jdbc:oracle:oci:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
             }
+
+            @Override
+            public StreamingAdapter getInstance(DamengConnectorConfig connectorConfig) {
+                return Instantiator.getInstanceWithProvidedConstructorType(
+                        "io.debezium.connector.dameng.xstream.XStreamAdapter",
+                        DamengConnectorConfig.class,
+                        connectorConfig);
+            }
         },
-        
-        
 
         /**
          * This is based on LogMiner utility.
@@ -1889,6 +1906,47 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
             @Override
             public String getConnectionUrl() {
                 return "jdbc:oracle:thin:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
+            }
+
+            @Override
+            public StreamingAdapter getInstance(DamengConnectorConfig connectorConfig) {
+                return Instantiator.getInstanceWithProvidedConstructorType(
+                        "io.debezium.connector.daameng.logminer.buffered.BufferedLogMinerAdapter",
+                        DamengConnectorConfig.class,
+                        connectorConfig);
+            }
+        },
+
+        LOG_MINER_UNBUFFERED("LogMiner_Unbuffered") {
+            @Override
+            public String getConnectionUrl() {
+                return "jdbc:oracle:thin:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
+            }
+
+            @Override
+            public StreamingAdapter getInstance(DamengConnectorConfig connectorConfig) {
+                return Instantiator.getInstanceWithProvidedConstructorType(
+                        "io.debezium.connector.dameng.logminer.unbuffered.UnbufferedLogMinerAdapter",
+                        DamengConnectorConfig.class,
+                        connectorConfig);
+            }
+        },
+
+        /**
+         * This is based on OpenLogReplicator project.
+         */
+        OLR("OLR") {
+            @Override
+            public String getConnectionUrl() {
+                return "jdbc:oracle:thin:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
+            }
+
+            @Override
+            public StreamingAdapter getInstance(DamengConnectorConfig connectorConfig) {
+                return Instantiator.getInstanceWithProvidedConstructorType(
+                        "io.debezium.connector.dameng.olr.OpenLogReplicatorAdapter",
+                        DamengConnectorConfig.class,
+                        connectorConfig);
             }
         };
         
@@ -1935,6 +1993,8 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
         public String getValue() {
             return value;
         }
+
+        public abstract StreamingAdapter getInstance(DamengConnectorConfig connectorConfig);
     }
 
     public enum LogMiningStrategy
@@ -2073,5 +2133,13 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
             final String schema = config.getString(USER);
             return id.table().equalsIgnoreCase(SqlUtils.LOGMNR_FLUSH_TABLE) && id.schema().equalsIgnoreCase(schema);
         }
+    }
+
+    private static boolean isUnbufferedLogMiner(Configuration config) {
+        return ConnectorAdapter.LOG_MINER_UNBUFFERED.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)));
+    }
+    
+    private static boolean isLogMiner(Configuration config) {
+        return isBufferedLogMiner(config) || isUnbufferedLogMiner(config);
     }
 }

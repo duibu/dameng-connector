@@ -8,13 +8,13 @@ package org.devlive.connector.dameng.logminer;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
-import io.debezium.connector.oracle.AbstractOracleStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.util.LRUCacheMap;
 import io.debezium.util.Strings;
+import org.devlive.connector.dameng.AbstractDamengStreamingChangeEventSourceMetrics;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.Scn;
+import org.devlive.connector.dameng.logminer.event.EventType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 @ThreadSafe
 public class LogMinerStreamingChangeEventSourceMetrics
-        extends AbstractOracleStreamingChangeEventSourceMetrics
+        extends AbstractDamengStreamingChangeEventSourceMetrics
         implements LogMinerStreamingChangeEventSourceMetricsMXBean {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerStreamingChangeEventSourceMetrics.class);
@@ -43,7 +43,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
     private static final long MILLIS_PER_SECOND = 1000L;
     private static final int TRANSACTION_ID_SET_SIZE = 10;
 
-    private final OracleConnectorConfig connectorConfig;
+    private final DamengConnectorConfig connectorConfig;
 
     private final Instant startTime;
     private final Clock clock;
@@ -94,14 +94,14 @@ public class LogMinerStreamingChangeEventSourceMetrics
     public LogMinerStreamingChangeEventSourceMetrics(CdcSourceTaskContext taskContext,
                                                      ChangeEventQueueMetrics changeEventQueueMetrics,
                                                      EventMetadataProvider metadataProvider,
-                                                     OracleConnectorConfig connectorConfig) {
+                                                     DamengConnectorConfig connectorConfig) {
         this(taskContext, changeEventQueueMetrics, metadataProvider, connectorConfig, Clock.systemUTC());
     }
 
     public LogMinerStreamingChangeEventSourceMetrics(CdcSourceTaskContext taskContext,
                                                      ChangeEventQueueMetrics changeEventQueueMetrics,
                                                      EventMetadataProvider metadataProvider,
-                                                     OracleConnectorConfig connectorConfig,
+                                                     DamengConnectorConfig connectorConfig,
                                                      Clock clock) {
         super(taskContext, changeEventQueueMetrics, metadataProvider);
         this.connectorConfig = connectorConfig;

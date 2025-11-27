@@ -5,8 +5,8 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.infinispan;
 
-import io.debezium.connector.oracle.logminer.buffered.AbstractLogMinerTransactionCache;
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
+import org.devlive.connector.dameng.logminer.buffered.AbstractLogMinerTransactionCache;
+import org.devlive.connector.dameng.logminer.event.LogMinerEvent;
 import org.infinispan.commons.api.BasicCache;
 
 import java.util.*;

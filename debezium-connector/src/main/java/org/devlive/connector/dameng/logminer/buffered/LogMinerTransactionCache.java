@@ -7,6 +7,7 @@ package org.devlive.connector.dameng.logminer.buffered;
 
 
 import org.devlive.connector.dameng.Scn;
+import org.devlive.connector.dameng.logminer.event.LogMinerEvent;
 
 import java.time.Instant;
 import java.util.Optional;

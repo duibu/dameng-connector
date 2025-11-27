@@ -7,17 +7,18 @@ package org.devlive.connector.dameng.logminer;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
-import io.debezium.connector.oracle.*;
-import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
-import io.debezium.connector.oracle.OracleConnectorConfig.TransactionSnapshotBoundaryMode;
 import io.debezium.document.Document;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.RelationalSnapshotChangeEventSource.RelationalSnapshotContext;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
+import org.apache.kafka.connect.runtime.ConnectorConfig;
+import org.devlive.connector.dameng.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +39,7 @@ public abstract class AbstractLogMinerStreamingAdapter
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLogMinerStreamingAdapter.class);
 
-    public AbstractLogMinerStreamingAdapter(OracleConnectorConfig connectorConfig) {
+    public AbstractLogMinerStreamingAdapter(DamengConnectorConfig connectorConfig) {
         super(connectorConfig);
     }
 
@@ -53,17 +54,17 @@ public abstract class AbstractLogMinerStreamingAdapter
     }
 
     @Override
-    public LogMinerStreamingChangeEventSourceMetrics getStreamingMetrics(OracleTaskContext taskContext,
+    public LogMinerStreamingChangeEventSourceMetrics getStreamingMetrics(DamengTaskContext taskContext,
                                                                          ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                          EventMetadataProvider metadataProvider,
-                                                                         OracleConnectorConfig connectorConfig) {
+                                                                         DamengConnectorConfig connectorConfig) {
         return new LogMinerStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, metadataProvider, connectorConfig);
     }
 
     @Override
-    public OracleOffsetContext determineSnapshotOffset(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx,
-                                                       OracleConnectorConfig connectorConfig,
-                                                       OracleConnection connection)
+    public DamengOffsetContext determineSnapshotOffset(RelationalSnapshotContext<DamengPartition, DamengOffsetContext> ctx,
+                                                       DamengConnectorConfig connectorConfig,
+                                                       DamengConnection connection)
             throws SQLException {
 
         final Scn latestTableDdlScn = getLatestTableDdlScn(ctx, connection).orElse(null);
@@ -87,7 +88,7 @@ public abstract class AbstractLogMinerStreamingAdapter
         // that prevents switching from a PDB to the root CDB and if invoking the LogMiner APIs on
         // such a connection, the use of commit/rollback by LogMiner will drop/invalidate the save
         // point as well. A separate connection is necessary to preserve the save point.
-        try (OracleConnection conn = new OracleConnection(connection.config(), false)) {
+        try (DamengConnection conn = new DamengConnection(connection.config(), false)) {
             conn.setAutoCommit(false);
             if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
                 // The next stage cannot be run within the PDB, reset the connection to the CDB.
@@ -98,11 +99,11 @@ public abstract class AbstractLogMinerStreamingAdapter
     }
 
     @Override
-    public Scn getOffsetScn(OracleOffsetContext offsetContext) {
+    public Scn getOffsetScn(DamengOffsetContext offsetContext) {
         return offsetContext.getScn();
     }
 
-    private Optional<Scn> getCurrentScn(Scn latestTableDdlScn, OracleConnection connection) throws SQLException {
+    private Optional<Scn> getCurrentScn(Scn latestTableDdlScn, DamengConnection connection) throws SQLException {
         final String query = "SELECT CURRENT_SCN FROM V$DATABASE";
 
         Scn currentScn;
@@ -113,7 +114,7 @@ public abstract class AbstractLogMinerStreamingAdapter
         return Optional.ofNullable(currentScn);
     }
 
-    private Optional<Scn> getPendingTransactions(Scn latestTableDdlScn, OracleConnection connection,
+    private Optional<Scn> getPendingTransactions(Scn latestTableDdlScn, DamengConnection connection,
                                                  Map<String, Scn> transactions, String transactionTableName)
             throws SQLException {
         final String query = "SELECT d.CURRENT_SCN, t.XID, t.START_SCN "
@@ -164,8 +165,8 @@ public abstract class AbstractLogMinerStreamingAdapter
         return Optional.ofNullable(currentScn);
     }
 
-    private OracleOffsetContext determineSnapshotOffset(OracleConnectorConfig connectorConfig,
-                                                        OracleConnection connection,
+    private DamengOffsetContext determineSnapshotOffset(DamengConnectorConfig connectorConfig,
+                                                        DamengConnection connection,
                                                         Scn currentScn,
                                                         Map<String, Scn> pendingTransactions,
                                                         String transactionTableName)
@@ -191,7 +192,7 @@ public abstract class AbstractLogMinerStreamingAdapter
             LOGGER.info("\tFound no in-progress transactions.");
         }
 
-        return OracleOffsetContext.create()
+        return DamengOffsetContext.create()
                 .logicalName(connectorConfig)
                 .scn(currentScn)
                 .snapshotScn(currentScn)
@@ -201,7 +202,7 @@ public abstract class AbstractLogMinerStreamingAdapter
                 .build();
     }
 
-    protected Scn getOldestScnAvailableInLogs(OracleConnectorConfig config, OracleConnection connection) throws SQLException {
+    protected Scn getOldestScnAvailableInLogs(DamengConnectorConfig config, DamengConnection connection) throws SQLException {
         final Duration archiveLogRetention = config.getArchiveLogRetention();
         final String archiveLogDestinationName = config.getArchiveDestinationNameResolver().getDestinationName(connection);
         return connection.queryAndMap(SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveLogDestinationName),
@@ -216,7 +217,7 @@ public abstract class AbstractLogMinerStreamingAdapter
                 });
     }
 
-    protected List<LogFile> getOrderedLogsFromScn(OracleConnectorConfig config, Scn sinceScn, OracleConnection connection) throws SQLException {
+    protected List<LogFile> getOrderedLogsFromScn(DamengConnectorConfig config, Scn sinceScn, DamengConnection connection) throws SQLException {
         final LogFileCollector collector = new LogFileCollector(config, connection);
         return collector.getLogs(sinceScn)
                 .stream()
@@ -224,11 +225,11 @@ public abstract class AbstractLogMinerStreamingAdapter
                 .collect(Collectors.toList());
     }
 
-    protected void getPendingTransactionsFromLogs(OracleConnection connection, Scn currentScn, Map<String, Scn> pendingTransactions) throws SQLException {
+    protected void getPendingTransactionsFromLogs(DamengConnection connection, Scn currentScn, Map<String, Scn> pendingTransactions) throws SQLException {
         final Scn oldestScn = getOldestScnAvailableInLogs(connectorConfig, connection);
         final List<LogFile> logFiles = getOrderedLogsFromScn(connectorConfig, oldestScn, connection);
         if (!logFiles.isEmpty()) {
-            try (var context = new LogMinerSessionContext(connection, false, LogMiningStrategy.ONLINE_CATALOG, connectorConfig.getLogMiningPathToDictionary())) {
+            try (var context = new LogMinerSessionContext(connection, false, DamengConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, connectorConfig.getLogMiningPathToDictionary())) {
                 context.addLogFiles(getMostRecentLogFilesForSearch(logFiles));
                 context.startSession(Scn.NULL, Scn.NULL, false);
 
@@ -276,12 +277,12 @@ public abstract class AbstractLogMinerStreamingAdapter
         return logs;
     }
 
-    private boolean isPendingTransactionSkip(OracleConnectorConfig config) {
-        return config.getLogMiningTransactionSnapshotBoundaryMode() == TransactionSnapshotBoundaryMode.SKIP;
+    private boolean isPendingTransactionSkip(DamengConnectorConfig config) {
+        return config.getLogMiningTransactionSnapshotBoundaryMode() == DamengConnectorConfig.TransactionSnapshotBoundaryMode.SKIP;
     }
 
-    public boolean isPendingTransactionViewOnly(OracleConnectorConfig config) {
-        return config.getLogMiningTransactionSnapshotBoundaryMode() == TransactionSnapshotBoundaryMode.TRANSACTION_VIEW_ONLY;
+    public boolean isPendingTransactionViewOnly(DamengConnectorConfig config) {
+        return config.getLogMiningTransactionSnapshotBoundaryMode() == DamengConnectorConfig.TransactionSnapshotBoundaryMode.TRANSACTION_VIEW_ONLY;
     }
 
     /**
@@ -292,7 +293,7 @@ public abstract class AbstractLogMinerStreamingAdapter
      * @param config the connector configuration, should not be {@code null}
      * @return the pending transaction table name
      */
-    private static String getTransactionTableName(OracleConnectorConfig config) {
+    private static String getTransactionTableName(DamengConnectorConfig config) {
         if (config.getRacNodes() == null || config.getRacNodes().isEmpty()) {
             return "V$TRANSACTION";
         }

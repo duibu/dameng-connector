@@ -2,15 +2,24 @@ package org.devlive.connector.dameng.logminer.buffered.infinispan;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Field;
+import org.devlive.connector.dameng.DamengConnectorConfig;
 import org.devlive.connector.dameng.logminer.buffered.AbstractCacheProvider;
 import org.devlive.connector.dameng.logminer.buffered.LogMinerCache;
 import org.devlive.connector.dameng.logminer.buffered.LogMinerTransactionCache;
+import org.infinispan.client.hotrod.RemoteCache;
+import org.infinispan.client.hotrod.RemoteCacheManager;
+import org.infinispan.client.hotrod.configuration.Configuration;
+import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
+import org.infinispan.client.hotrod.impl.ConfigurationProperties;
+import org.infinispan.commons.configuration.StringConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+
+import static org.devlive.connector.dameng.DamengConnectorConfig.*;
 
 public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<InfinispanTransaction> {
 
@@ -27,7 +36,7 @@ public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<Infinis
     private final InfinispanLogMinerCache<String, String> processedTransactionsCache;
     private final InfinispanLogMinerCache<String, String> schemaChangesCache;
 
-    public RemoteInfinispanCacheProvider(OracleConnectorConfig connectorConfig) {
+    public RemoteInfinispanCacheProvider(DamengConnectorConfig connectorConfig) {
         LOGGER.info("Using Infinispan in Hotrod client mode to buffer transactions");
 
         this.dropBufferOnStop = connectorConfig.isLogMiningBufferDropOnStop();
@@ -73,7 +82,7 @@ public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<Infinis
         cacheManager.close();
     }
 
-    private <C, V> RemoteCache<C, V> createCache(String cacheName, OracleConnectorConfig connectorConfig, Field field) {
+    private <C, V> RemoteCache<C, V> createCache(String cacheName, DamengConnectorConfig connectorConfig, Field field) {
         Objects.requireNonNull(cacheName);
 
         RemoteCache<C, V> cache = cacheManager.getCache(cacheName);
@@ -95,23 +104,23 @@ public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<Infinis
         return cache;
     }
 
-    private InfinispanLogMinerTransactionCache createTransactionCache(OracleConnectorConfig connectorConfig) {
+    private InfinispanLogMinerTransactionCache createTransactionCache(DamengConnectorConfig connectorConfig) {
         return new InfinispanLogMinerTransactionCache(
                 createCache(TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS),
                 createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS));
     }
 
-    private InfinispanLogMinerCache<String, String> createProcessedTransactionCache(OracleConnectorConfig connectorConfig) {
+    private InfinispanLogMinerCache<String, String> createProcessedTransactionCache(DamengConnectorConfig connectorConfig) {
         return new InfinispanLogMinerCache<>(
                 createCache(PROCESSED_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS));
     }
 
-    private InfinispanLogMinerCache<String, String> createSchemaChangesCache(OracleConnectorConfig connectorConfig) {
+    private InfinispanLogMinerCache<String, String> createSchemaChangesCache(DamengConnectorConfig connectorConfig) {
         return new InfinispanLogMinerCache<>(
                 createCache(SCHEMA_CHANGES_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES));
     }
 
-    private static Configuration createClientConfig(OracleConnectorConfig connectorConfig) {
+    private static Configuration createClientConfig(DamengConnectorConfig connectorConfig) {
         return new ConfigurationBuilder()
                 .withProperties(getHotrodClientProperties(connectorConfig))
                 // todo: why must these be defined manually rather than automated like embedded mode?
@@ -120,7 +129,7 @@ public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<Infinis
                 .build();
     }
 
-    private static Properties getHotrodClientProperties(OracleConnectorConfig connectorConfig) {
+    private static Properties getHotrodClientProperties(DamengConnectorConfig connectorConfig) {
         final Map<String, String> clientSettings = connectorConfig.getConfig()
                 .subset(HOTROD_CLIENT_LOOKUP_PREFIX, true)
                 .asMap();

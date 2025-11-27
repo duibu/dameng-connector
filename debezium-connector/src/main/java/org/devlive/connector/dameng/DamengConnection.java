@@ -6,6 +6,7 @@
 package org.devlive.connector.dameng;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -42,9 +43,7 @@ import java.util.stream.Collectors;
 
 @SuppressFBWarnings(value = {"CT_CONSTRUCTOR_THROW", "OBL_UNSATISFIED_OBLIGATION_EXCEPTION_EDGE", "ODR_OPEN_DATABASE_RESOURCE",
         "SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING"})
-public class DamengConnection
-        extends JdbcConnection
-{
+public class DamengConnection extends JdbcConnection {
     private static final Logger LOGGER = LoggerFactory.getLogger(DamengConnection.class);
 
     /**
@@ -68,23 +67,41 @@ public class DamengConnection
      */
     private final DamengDatabaseVersion databaseVersion;
 
-    public DamengConnection(Configuration config, Supplier<ClassLoader> classLoaderSupplier)
-    {
-        super(JdbcConfiguration.adapt(config), resolveConnectionFactory(config), classLoaderSupplier, "\"", "\"");
+    private static final String QUOTED_CHARACTER = "\"";
 
-        this.databaseVersion = resolveOracleDatabaseVersion();
-        LOGGER.info("Database Version: {}", databaseVersion.getBanner());
+    public DamengConnection(JdbcConfiguration config) {
+        this(config, true);
     }
 
-    public static String connectionString(Configuration config)
-    {
+    public DamengConnection(JdbcConfiguration config, ConnectionFactory connectionFactory) {
+        this(config, connectionFactory, true);
+    }
+
+    public DamengConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, boolean showVersion) {
+        super(config, connectionFactory, QUOTED_CHARACTER, QUOTED_CHARACTER);
+        LOGGER.trace("JDBC connection string: " + connectionString(config));
+        this.databaseVersion = resolveOracleDatabaseVersion();
+        if (showVersion) {
+            LOGGER.info("Database Version: {}", databaseVersion.getBanner());
+        }
+    }
+
+    public DamengConnection(JdbcConfiguration config, boolean showVersion) {
+        super(config, resolveConnectionFactory(config), QUOTED_CHARACTER, QUOTED_CHARACTER);
+        LOGGER.trace("JDBC connection string: " + connectionString(config));
+        this.databaseVersion = resolveOracleDatabaseVersion();
+        if (showVersion) {
+            LOGGER.info("Database Version: {}", databaseVersion.getBanner());
+        }
+    }
+
+    public static String connectionString(Configuration config) {
         return config.getString(URL) != null
                 ? config.getString(URL)
                 : ConnectorAdapter.parse(config.getString("connection.adapter")).getConnectionUrl();
     }
 
-    private static ConnectionFactory resolveConnectionFactory(Configuration config)
-    {
+    private static ConnectionFactory resolveConnectionFactory(Configuration config) {
         // return JdbcConnection.patternBasedFactory(connectionString(config));
         return JdbcConnection.patternBasedFactory(
                 "jdbc:dm://${hostname}:${port}/${dbname}",
@@ -92,59 +109,49 @@ public class DamengConnection
                 DamengConnection.class.getClassLoader());
     }
 
-    public void setSessionToPdb(String pdbName)
-    {
+    public void setSessionToPdb(String pdbName) {
         Statement statement = null;
 
         try {
             statement = connection().createStatement();
             statement.execute("alter session set container=" + pdbName);
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             throw new RuntimeException(e);
-        }
-        finally {
+        } finally {
             if (statement != null) {
                 try {
                     statement.close();
-                }
-                catch (SQLException e) {
+                } catch (SQLException e) {
                     LOGGER.error("Couldn't close statement", e);
                 }
             }
         }
     }
 
-    public void resetSessionToCdb()
-    {
+    public void resetSessionToCdb() {
         Statement statement = null;
 
         try {
             statement = connection().createStatement();
             statement.execute("alter session set container=cdb$root");
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             throw new RuntimeException(e);
-        }
-        finally {
+        } finally {
             if (statement != null) {
                 try {
                     statement.close();
-                }
-                catch (SQLException e) {
+                } catch (SQLException e) {
                     LOGGER.error("Couldn't close statement", e);
                 }
             }
         }
     }
 
-    public DamengDatabaseVersion getOracleVersion()
-    {
+    public DamengDatabaseVersion getOracleVersion() {
         return databaseVersion;
     }
 
-    private DamengDatabaseVersion resolveOracleDatabaseVersion()
-    {
+    private DamengDatabaseVersion resolveOracleDatabaseVersion() {
         String versionStr;
         try {
             try {
@@ -159,14 +166,12 @@ public class DamengConnection
                                     }
                                     return null;
                                 });
-            }
-            catch (SQLException e) {
+            } catch (SQLException e) {
                 // exception ignored
                 if (e.getMessage().contains("ORA-00904: \"BANNER_FULL\"")) {
                     LOGGER.debug("BANNER_FULL column not in V$VERSION, using BANNER column as fallback");
                     versionStr = null;
-                }
-                else {
+                } else {
                     throw e;
                 }
             }
@@ -186,8 +191,7 @@ public class DamengConnection
                                     return null;
                                 });
             }
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             throw new RuntimeException("Failed to resolve Oracle database version", e);
         }
 
@@ -204,8 +208,7 @@ public class DamengConnection
             String schemaNamePattern,
             String tableNamePattern,
             String[] tableTypes)
-            throws SQLException
-    {
+            throws SQLException {
         Set<TableId> tableIds = super.readTableNames(null, schemaNamePattern, tableNamePattern, tableTypes);
 
         return tableIds.stream()
@@ -221,9 +224,8 @@ public class DamengConnection
      * @return set of all table ids for existing table objects
      * @throws SQLException if a database exception occurred
      */
-    protected Set<TableId> getAllTableIds(String catalogName)
-            throws SQLException
-    {
+    public Set<TableId> getAllTableIds(String catalogName)
+            throws SQLException {
         final String query =
                 "SELECT OWNER, TABLE_NAME FROM ALL_TABLES "
                         +
@@ -253,8 +255,7 @@ public class DamengConnection
 
     // todo replace metadata with something like this
     private ResultSet getTableColumnsInfo(String schemaNamePattern, String tableName)
-            throws SQLException
-    {
+            throws SQLException {
         String columnQuery =
                 "select column_name, data_type, data_length, data_precision, data_scale, default_length, density, char_length from "
                         + "all_tab_columns where owner like '"
@@ -267,59 +268,6 @@ public class DamengConnection
         return statement.executeQuery();
     }
 
-    // this is much faster, we will use it until full replacement of the metadata usage TODO
-    public void readSchemaForCapturedTables(
-            Tables tables,
-            String databaseCatalog,
-            String schemaNamePattern,
-            ColumnNameFilter columnFilter,
-            boolean removeTablesNotFoundInJdbc,
-            Set<TableId> capturedTables)
-            throws SQLException
-    {
-        Set<TableId> tableIdsBefore = new HashSet<>(tables.tableIds());
-
-        DatabaseMetaData metadata = connection().getMetaData();
-        Map<TableId, List<Column>> columnsByTable = new HashMap<>();
-
-        for (TableId tableId : capturedTables) {
-            try (ResultSet columnMetadata =
-                    metadata.getColumns(databaseCatalog, schemaNamePattern, tableId.table(), null)) {
-                while (columnMetadata.next()) {
-                    // add all whitelisted columns
-                    readTableColumn(columnMetadata, tableId, columnFilter)
-                            .ifPresent(
-                                    column -> {
-                                        columnsByTable
-                                                .computeIfAbsent(tableId, t -> new ArrayList<>())
-                                                .add(column.create());
-                                    });
-                }
-            }
-        }
-
-        // Read the metadata for the primary keys ...
-        for (Map.Entry<TableId, List<Column>> tableEntry : columnsByTable.entrySet()) {
-            // First get the primary key information, which must be done for *each* table ...
-            List<String> pkColumnNames = readPrimaryKeyNames(metadata, tableEntry.getKey());
-
-            // Then define the table ...
-            List<Column> columns = tableEntry.getValue();
-            Collections.sort(columns);
-            tables.overwriteTable(tableEntry.getKey(), columns, pkColumnNames, null);
-        }
-
-        if (removeTablesNotFoundInJdbc) {
-            // Remove any definitions for tables that were not found in the database metadata ...
-            tableIdsBefore.removeAll(columnsByTable.keySet());
-            tableIdsBefore.forEach(tables::removeTable);
-        }
-
-        for (TableId tableId : capturedTables) {
-            overrideOracleSpecificColumnTypes(tables, tableId, tableId);
-        }
-    }
-
     @Override
     public void readSchema(
             Tables tables,
@@ -328,8 +276,7 @@ public class DamengConnection
             TableFilter tableFilter,
             ColumnNameFilter columnFilter,
             boolean removeTablesNotFoundInJdbc)
-            throws SQLException
-    {
+            throws SQLException {
         super.readSchema(
                 tables, null, schemaNamePattern, tableFilter, columnFilter, removeTablesNotFoundInJdbc);
 
@@ -354,8 +301,7 @@ public class DamengConnection
     @Override
     protected Optional<ColumnEditor> readTableColumn(
             ResultSet columnMetadata, TableId tableId, ColumnNameFilter columnFilter)
-            throws SQLException
-    {
+            throws SQLException {
         // Oracle drivers require this for LONG/LONGRAW to be fetched first.
         final String defaultValue = columnMetadata.getString(13);
 
@@ -388,14 +334,12 @@ public class DamengConnection
 
     @Override
     public List<String> readTableUniqueIndices(DatabaseMetaData metadata, TableId id)
-            throws SQLException
-    {
+            throws SQLException {
         return super.readTableUniqueIndices(metadata, id.toDoubleQuoted());
     }
 
     @Override
-    protected boolean isTableUniqueIndexIncluded(String indexName, String columnName)
-    {
+    protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
         if (columnName != null) {
             return !SYS_NC_PATTERN.matcher(columnName).matches();
         }
@@ -403,8 +347,7 @@ public class DamengConnection
     }
 
     private void overrideOracleSpecificColumnTypes(
-            Tables tables, TableId tableId, TableId tableIdWithCatalog)
-    {
+            Tables tables, TableId tableId, TableId tableIdWithCatalog) {
         TableEditor editor = tables.editTable(tableId);
         editor.tableId(tableIdWithCatalog);
 
@@ -446,15 +389,13 @@ public class DamengConnection
      * @param connectorConfig the connector configuration
      * @return whether table name case insensitivity is used
      */
-    public boolean getTablenameCaseInsensitivity(DamengConnectorConfig connectorConfig)
-    {
+    public boolean getTablenameCaseInsensitivity(DamengConnectorConfig connectorConfig) {
         Optional<Boolean> configValue = connectorConfig.getTablenameCaseInsensitive();
         return configValue.orElse(getOracleVersion().getMajor() == 11);
     }
 
     public DamengConnection executeLegacy(String... sqlStatements)
-            throws SQLException
-    {
+            throws SQLException {
         return executeLegacy(
                 statement -> {
                     for (String sqlStatement : sqlStatements) {
@@ -466,13 +407,36 @@ public class DamengConnection
     }
 
     public DamengConnection executeLegacy(Operations operations)
-            throws SQLException
-    {
+            throws SQLException {
         Connection conn = connection();
         try (Statement statement = conn.createStatement()) {
             operations.apply(statement);
             commit();
         }
         return this;
+    }
+
+    public boolean isArchiveLogDestinationValid(String archiveDestinationName) throws SQLException {
+        return prepareQueryAndMap("SELECT STATUS, TYPE FROM V$ARCHIVE_DEST_STATUS WHERE DEST_NAME=?",
+                st -> st.setString(1, archiveDestinationName),
+                rs -> {
+                    if (!rs.next()) {
+                        throw new DebeziumException(
+                                String.format("Archive log destination name '%s' is unknown to Oracle",
+                                        archiveDestinationName));
+                    }
+                    return "VALID".equals(rs.getString("STATUS")) && "LOCAL".equals(rs.getString("TYPE"));
+                });
+    }
+
+
+    public boolean isOnlyOneArchiveLogDestinationValid() throws SQLException {
+        return queryAndMap("SELECT COUNT(1) FROM V$ARCHIVE_DEST_STATUS WHERE STATUS='VALID' AND TYPE='LOCAL'",
+                rs -> {
+                    if (!rs.next()) {
+                        throw new DebeziumException("Unable to resolve number of archive log destinations");
+                    }
+                    return rs.getLong(1) == 1L;
+                });
     }
 }

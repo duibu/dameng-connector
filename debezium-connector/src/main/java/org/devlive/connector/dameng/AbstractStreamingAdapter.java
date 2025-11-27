@@ -6,6 +6,7 @@
 package org.devlive.connector.dameng;
 
 import io.debezium.document.Document;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.RelationalSnapshotChangeEventSource.RelationalSnapshotContext;
 import io.debezium.relational.TableId;
 import org.slf4j.Logger;
@@ -23,13 +24,13 @@ import java.util.stream.Collectors;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractStreamingAdapter<T extends AbstractOracleStreamingChangeEventSourceMetrics> implements StreamingAdapter<T> {
+public abstract class AbstractStreamingAdapter<T extends AbstractDamengStreamingChangeEventSourceMetrics> implements StreamingAdapter<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractStreamingAdapter.class);
 
-    protected final OracleConnectorConfig connectorConfig;
+    protected final DamengConnectorConfig connectorConfig;
 
-    public AbstractStreamingAdapter(OracleConnectorConfig connectorConfig) {
+    public AbstractStreamingAdapter(DamengConnectorConfig connectorConfig) {
         this.connectorConfig = connectorConfig;
     }
 
@@ -51,7 +52,7 @@ public abstract class AbstractStreamingAdapter<T extends AbstractOracleStreaming
      * @return true if the two system change numbers have the same timestamp; false otherwise
      * @throws SQLException if a database error occurred
      */
-    protected boolean areSameTimestamp(Scn scn1, Scn scn2, OracleConnection connection) throws SQLException {
+    protected boolean areSameTimestamp(Scn scn1, Scn scn2, DamengConnection connection) throws SQLException {
         if (scn1 == null) {
             return false;
         }
@@ -74,7 +75,7 @@ public abstract class AbstractStreamingAdapter<T extends AbstractOracleStreaming
      * @return the latest table DDL system change number, never {@code null} but may be empty.
      * @throws SQLException if a database error occurred
      */
-    protected Optional<Scn> getLatestTableDdlScn(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx, OracleConnection connection)
+    protected Optional<Scn> getLatestTableDdlScn(RelationalSnapshotContext<DamengPartition, DamengOffsetContext> ctx, DamengConnection connection)
             throws SQLException {
         if (ctx.capturedTables.isEmpty()) {
             return Optional.empty();

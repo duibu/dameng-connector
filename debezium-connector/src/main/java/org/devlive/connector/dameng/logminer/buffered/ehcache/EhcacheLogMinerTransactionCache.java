@@ -5,9 +5,9 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.ehcache;
 
-import io.debezium.connector.oracle.logminer.buffered.AbstractLogMinerTransactionCache;
-import io.debezium.connector.oracle.logminer.buffered.CacheProvider;
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
+import org.devlive.connector.dameng.logminer.buffered.AbstractLogMinerTransactionCache;
+import org.devlive.connector.dameng.logminer.buffered.CacheProvider;
+import org.devlive.connector.dameng.logminer.event.LogMinerEvent;
 import org.ehcache.Cache;
 
 import java.util.*;
