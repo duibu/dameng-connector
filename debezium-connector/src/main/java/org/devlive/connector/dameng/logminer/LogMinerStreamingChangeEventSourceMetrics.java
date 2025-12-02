@@ -5,21 +5,12 @@
  */
 package org.devlive.connector.dameng.logminer;
 
-import io.debezium.annotation.ThreadSafe;
-import io.debezium.connector.base.ChangeEventQueueMetrics;
-import io.debezium.connector.common.CdcSourceTaskContext;
-import io.debezium.pipeline.source.spi.EventMetadataProvider;
-import io.debezium.util.LRUCacheMap;
-import io.debezium.util.Strings;
-import org.devlive.connector.dameng.AbstractDamengStreamingChangeEventSourceMetrics;
-import org.devlive.connector.dameng.DamengConnectorConfig;
-import org.devlive.connector.dameng.Scn;
-import org.devlive.connector.dameng.logminer.event.EventType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.math.BigInteger;
-import java.time.*;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
@@ -27,6 +18,20 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+
+import org.devlive.connector.dameng.AbstractDamengStreamingChangeEventSourceMetrics;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.Scn;
+import org.devlive.connector.dameng.logminer.event.EventType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.base.ChangeEventQueueMetrics;
+import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.pipeline.source.spi.EventMetadataProvider;
+import io.debezium.util.LRUCacheMap;
+import io.debezium.util.Strings;
 
 /**
  * Oracle Streaming Metrics implementation for the Oracle LogMiner streaming adapter.

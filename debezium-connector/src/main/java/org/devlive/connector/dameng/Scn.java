@@ -14,6 +14,7 @@ import java.util.Objects;
  * @author Chris Cranford
  */
 public class Scn implements Comparable<Scn> {
+
     /**
      * Represents an Scn that implies the maximum possible value of an SCN, useful as a placeholder.
      */
@@ -24,10 +25,22 @@ public class Scn implements Comparable<Scn> {
      */
     public static final Scn NULL = new Scn(null);
 
+    /**
+     * Represents an Scn with value 1, useful for playing with inclusive/exclusive query boundaries.
+     */
+    public static final Scn ONE = new Scn(BigInteger.valueOf(1));
+
     private final BigInteger scn;
 
     public Scn(BigInteger scn) {
         this.scn = scn;
+    }
+
+    /**
+     * Returns whether this {@link Scn} is null and contains no value.
+     */
+    public boolean isNull() {
+        return this.scn == null;
     }
 
     /**
@@ -61,13 +74,6 @@ public class Scn implements Comparable<Scn> {
     }
 
     /**
-     * Returns whether this {@link Scn} is null and contains no value.
-     */
-    public boolean isNull() {
-        return this.scn == null;
-    }
-
-    /**
      * Get the Scn represented as a {@code long} data type.
      */
     public long longValue() {
@@ -87,9 +93,11 @@ public class Scn implements Comparable<Scn> {
     public Scn add(Scn value) {
         if (isNull() && value.isNull()) {
             return Scn.NULL;
-        } else if (value.isNull()) {
+        }
+        else if (value.isNull()) {
             return new Scn(scn);
-        } else if (isNull()) {
+        }
+        else if (isNull()) {
             return new Scn(value.scn);
         }
         return new Scn(scn.add(value.scn));
@@ -104,9 +112,11 @@ public class Scn implements Comparable<Scn> {
     public Scn subtract(Scn value) {
         if (isNull() && value.isNull()) {
             return Scn.NULL;
-        } else if (value.isNull()) {
+        }
+        else if (value.isNull()) {
             return new Scn(scn);
-        } else if (isNull()) {
+        }
+        else if (isNull()) {
             return new Scn(value.scn.negate());
         }
         return new Scn(scn.subtract(value.scn));
@@ -122,9 +132,11 @@ public class Scn implements Comparable<Scn> {
     public int compareTo(Scn o) {
         if (isNull() && o.isNull()) {
             return 0;
-        } else if (isNull() && !o.isNull()) {
+        }
+        else if (isNull() && !o.isNull()) {
             return -1;
-        } else if (!isNull() && o.isNull()) {
+        }
+        else if (!isNull() && o.isNull()) {
             return 1;
         }
         return scn.compareTo(o.scn);

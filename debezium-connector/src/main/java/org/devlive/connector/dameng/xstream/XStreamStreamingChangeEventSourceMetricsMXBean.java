@@ -5,13 +5,14 @@
  */
 package org.devlive.connector.dameng.xstream;
 
-import io.debezium.connector.oracle.OracleCommonStreamingChangeEventSourceMetricsMXBean;
+
+import org.devlive.connector.dameng.DamengCommonStreamingChangeEventSourceMetricsMXBean;
 
 /**
- * Oracle Streaming Metrics for Oracle XStream.
+ * Dameng Streaming Metrics for Dameng XStream.
  *
  * @author Chris Cranford
  */
 public interface XStreamStreamingChangeEventSourceMetricsMXBean
-        extends OracleCommonStreamingChangeEventSourceMetricsMXBean {
+        extends DamengCommonStreamingChangeEventSourceMetricsMXBean {
 }

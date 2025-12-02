@@ -6,8 +6,6 @@
 package org.devlive.connector.dameng.xstream;
 
 import io.debezium.DebeziumException;
-import oracle.sql.RAW;
-import oracle.streams.ChunkColumnValue;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;

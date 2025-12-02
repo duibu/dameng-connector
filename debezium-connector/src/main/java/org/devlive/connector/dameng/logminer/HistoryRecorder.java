@@ -16,32 +16,30 @@ import java.sql.Timestamp;
  * This interface defines how a custom recorder can be supplied to record LogMiner results.
  */
 @Incubating
-public interface HistoryRecorder
-        extends AutoCloseable
-{
+public interface HistoryRecorder extends AutoCloseable {
     /**
      * Prepares the history recorder
      *
-     * @param streamingMetrics the streaming metrics
+     * @param streamingMetrics  the streaming metrics
      * @param jdbcConfiguration the jdbc configuration
-     * @param retentionHours the history retention hours
+     * @param retentionHours    the history retention hours
      */
     void prepare(DamengStreamingChangeEventSourceMetrics streamingMetrics, JdbcConfiguration jdbcConfiguration, long retentionHours);
 
     /**
      * Records the LogMiner entry.
      *
-     * @param scn the entry's SCN
-     * @param tableName the table name
-     * @param segOwner the table owner
+     * @param scn           the entry's SCN
+     * @param tableName     the table name
+     * @param segOwner      the table owner
      * @param operationCode the operation code
-     * @param changeTime the time the operation occurred
+     * @param changeTime    the time the operation occurred
      * @param transactionId the transaction identifier
-     * @param csf the continuation sequence flag
-     * @param redoSql the redo SQL that performed the operation
+     * @param csf           the continuation sequence flag
+     * @param redoSql       the redo SQL that performed the operation
      */
     void record(Scn scn, String tableName, String segOwner, int operationCode, Timestamp changeTime,
-            String transactionId, int csf, String redoSql);
+                String transactionId, int csf, String redoSql);
 
     /**
      * Flushes the LogMiner history captured by the recorder.

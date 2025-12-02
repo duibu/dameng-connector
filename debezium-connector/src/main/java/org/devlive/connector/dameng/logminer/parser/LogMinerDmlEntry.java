@@ -5,7 +5,8 @@
  */
 package org.devlive.connector.dameng.logminer.parser;
 
-import io.debezium.connector.oracle.logminer.events.EventType;
+
+import org.devlive.connector.dameng.logminer.event.EventType;
 
 public interface LogMinerDmlEntry {
     /**

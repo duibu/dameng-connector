@@ -5,9 +5,9 @@
  */
 package org.devlive.connector.dameng.logminer.event;
 
-import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.parser.LobWriteParser;
 import io.debezium.relational.TableId;
+import org.devlive.connector.dameng.Scn;
+import org.devlive.connector.dameng.logminer.parser.LobWriteParser;
 
 import java.time.Instant;
 

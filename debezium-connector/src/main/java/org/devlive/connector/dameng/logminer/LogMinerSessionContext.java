@@ -5,10 +5,9 @@
  */
 package org.devlive.connector.dameng.logminer;
 
-import io.debezium.connector.oracle.OracleConnection;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
-import io.debezium.connector.oracle.Scn;
+import org.devlive.connector.dameng.DamengConnection;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.Scn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +19,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * A context class that provides centralized control over an Oracle LogMiner session.
+ * A context class that provides centralized control over an Dameng LogMiner session.
  *
  * @author Chris Cranford
  */
@@ -28,9 +27,9 @@ public class LogMinerSessionContext implements AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerSessionContext.class);
 
-    private final OracleConnection connection;
+    private final DamengConnection connection;
     private final boolean useContinuousMining;
-    private final LogMiningStrategy strategy;
+    private final DamengConnectorConfig.LogMiningStrategy strategy;
     private final String dictionaryFilePath;
 
     private boolean sessionStarted = false;
@@ -38,7 +37,7 @@ public class LogMinerSessionContext implements AutoCloseable {
     private Scn currentSessionStartScn = Scn.NULL;
     private Scn currentSessionEndScn = Scn.NULL;
 
-    public LogMinerSessionContext(OracleConnection connection, boolean useContinuousMining, LogMiningStrategy strategy, String dictionaryFilePath) {
+    public LogMinerSessionContext(DamengConnection connection, boolean useContinuousMining, DamengConnectorConfig.LogMiningStrategy strategy, String dictionaryFilePath) {
         this.connection = connection;
         this.useContinuousMining = useContinuousMining;
         this.strategy = strategy;
@@ -144,7 +143,7 @@ public class LogMinerSessionContext implements AutoCloseable {
                 query.append("endScn => '").append(endScn).append("', ");
             }
             query.append("options => ").append(String.join(" + ", getMiningOptions(committedDataOnly)));
-            if (strategy == OracleConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE) {
+            if (strategy == DamengConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE) {
                 query.append(", DICTFILENAME => '").append(dictionaryFilePath).append("'");
             }
             query.append("); END;");
@@ -194,7 +193,7 @@ public class LogMinerSessionContext implements AutoCloseable {
     }
 
     /**
-     * Writes the data dictionary to the Oracle transaction logs.
+     * Writes the data dictionary to the Dameng transaction logs.
      *
      * @throws SQLException if a database exception occurs
      */

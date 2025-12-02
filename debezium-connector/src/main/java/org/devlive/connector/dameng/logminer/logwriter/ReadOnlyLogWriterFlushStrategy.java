@@ -6,7 +6,7 @@
 package org.devlive.connector.dameng.logminer.logwriter;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.oracle.Scn;
+import org.devlive.connector.dameng.Scn;
 
 /**
  * A simple strategy that performs no operations to attempt to flush the Oracle redo

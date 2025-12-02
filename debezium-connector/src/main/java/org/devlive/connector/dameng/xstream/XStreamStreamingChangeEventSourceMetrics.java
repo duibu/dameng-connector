@@ -7,15 +7,15 @@ package org.devlive.connector.dameng.xstream;
 
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
-import io.debezium.connector.oracle.AbstractOracleStreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
+import org.devlive.connector.dameng.AbstractDamengStreamingChangeEventSourceMetrics;
 
 /**
- * Oracle Streaming Metrics implementation for the Oracle XStream streaming adapter.
+ * Dameng Streaming Metrics implementation for the Dameng XStream streaming adapter.
  *
  * @author Chris Cranford
  */
-public class XStreamStreamingChangeEventSourceMetrics extends AbstractOracleStreamingChangeEventSourceMetrics {
+public class XStreamStreamingChangeEventSourceMetrics extends AbstractDamengStreamingChangeEventSourceMetrics {
     public XStreamStreamingChangeEventSourceMetrics(CdcSourceTaskContext taskContext,
                                                     ChangeEventQueueMetrics changeEventQueueMetrics,
                                                     EventMetadataProvider metadataProvider) {

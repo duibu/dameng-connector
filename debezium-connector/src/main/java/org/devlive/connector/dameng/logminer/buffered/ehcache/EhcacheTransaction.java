@@ -5,8 +5,9 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.ehcache;
 
-import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.buffered.AbstractTransaction;
+
+import org.devlive.connector.dameng.Scn;
+import org.devlive.connector.dameng.logminer.buffered.AbstractTransaction;
 
 import java.time.Instant;
 

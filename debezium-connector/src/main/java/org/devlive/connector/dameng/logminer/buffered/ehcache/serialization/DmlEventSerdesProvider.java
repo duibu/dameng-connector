@@ -5,9 +5,10 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.ehcache.serialization;
 
-import io.debezium.connector.oracle.logminer.events.DmlEvent;
-import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
-import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
+
+import org.devlive.connector.dameng.logminer.event.DmlEvent;
+import org.devlive.connector.dameng.logminer.parser.LogMinerDmlEntry;
+import org.devlive.connector.dameng.logminer.parser.LogMinerDmlEntryImpl;
 
 import java.io.IOException;
 

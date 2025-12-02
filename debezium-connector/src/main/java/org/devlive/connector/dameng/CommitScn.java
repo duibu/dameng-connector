@@ -7,11 +7,11 @@ package org.devlive.connector.dameng;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
-import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.util.Strings;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.devlive.connector.dameng.logminer.event.LogMinerEventRow;
 
 import java.util.*;
 import java.util.stream.Collectors;

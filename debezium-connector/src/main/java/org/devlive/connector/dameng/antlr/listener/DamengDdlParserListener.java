@@ -24,36 +24,29 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * It instantiates supported listeners, walks listeners through every parsing rule and collects parsing exceptions.
  */
 @SuppressFBWarnings(value = "EI_EXPOSE_REP")
-public class DamengDdlParserListener
-        extends PlSqlParserBaseListener
-        implements AntlrDdlParserListener
-{
+public class DamengDdlParserListener extends PlSqlParserBaseListener implements AntlrDdlParserListener {
     private final List<ParseTreeListener> listeners = new CopyOnWriteArrayList<>();
     private final Collection<ParsingException> errors = new ArrayList<>();
 
     public DamengDdlParserListener(final String catalogName, final String schemaName,
-                                   final DamengDdlParser parser)
-    {
+                                   final DamengDdlParser parser) {
         listeners.add(new CreateTableParserListener(catalogName, schemaName, parser, listeners));
         listeners.add(new AlterTableParserListener(catalogName, schemaName, parser, listeners));
         listeners.add(new DropTableParserListener(catalogName, schemaName, parser));
     }
 
     @Override
-    public Collection<ParsingException> getErrors()
-    {
+    public Collection<ParsingException> getErrors() {
         return errors;
     }
 
     @Override
-    public void enterEveryRule(ParserRuleContext ctx)
-    {
+    public void enterEveryRule(ParserRuleContext ctx) {
         ProxyParseTreeListenerUtil.delegateEnterRule(ctx, listeners, errors);
     }
 
     @Override
-    public void exitEveryRule(ParserRuleContext ctx)
-    {
+    public void exitEveryRule(ParserRuleContext ctx) {
         ProxyParseTreeListenerUtil.delegateExitRule(ctx, listeners, errors);
     }
 }

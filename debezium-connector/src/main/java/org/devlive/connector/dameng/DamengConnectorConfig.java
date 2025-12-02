@@ -5,12 +5,38 @@
  */
 package org.devlive.connector.dameng;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import io.debezium.config.*;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigDef.Importance;
+import org.apache.kafka.common.config.ConfigDef.Type;
+import org.apache.kafka.common.config.ConfigDef.Width;
+import org.devlive.connector.dameng.logminer.buffered.infinispan.RemoteInfinispanCacheProvider;
+import org.devlive.connector.dameng.logminer.logwriter.LogWriterFlushStrategy;
+import org.devlive.connector.dameng.util.DamengUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.ConfigDefinition;
+import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationNames;
+import io.debezium.config.EnumeratedValue;
+import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
-import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
@@ -19,32 +45,14 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.Strings;
-import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.common.config.ConfigDef.Importance;
-import org.apache.kafka.common.config.ConfigDef.Type;
-import org.apache.kafka.common.config.ConfigDef.Width;
-import org.devlive.connector.dameng.logminer.HistoryRecorder;
-import org.devlive.connector.dameng.logminer.NeverHistoryRecorder;
-import org.devlive.connector.dameng.logminer.SqlUtils;
-import org.devlive.connector.dameng.logminer.buffered.infinispan.RemoteInfinispanCacheProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 /**
- * Connector configuration for dameng.
+ * Connector configuration for Oracle.
  *
  * @author Gunnar Morling
  */
-@SuppressFBWarnings(value = {"EI_EXPOSE_REP", "MS_SHOULD_BE_FINAL", "NP_NULL_PARAM_DEREF", "NP_BOOLEAN_RETURN_NULL", "RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT"})
 public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnectorConfig {
+
 
     protected static final int DEFAULT_PORT = 1528;
     protected static final int DEFAULT_LOG_FILE_QUERY_MAX_RETRIES = 5;
@@ -77,13 +85,15 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withNoValidation()
             .withValidation(DamengConnectorConfig::requiredWhenNoUrl);
 
-    public static final Field PDB_NAME = Field.create(DATABASE_CONFIG_PREFIX + "pdb.name")
+    public static final Field PDB_NAME = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "pdb.name")
             .withDisplayName("PDB name")
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 8))
             .withDescription("Name of the pluggable database when working with a multi-tenant set-up. "
                     + "The CDB name must be given via " + DATABASE_NAME.name() + " in this case.");
+
     public static final Field XSTREAM_SERVER_NAME = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "out.server.name")
             .withDisplayName("XStream out server name")
             .withType(Type.STRING)
@@ -138,8 +148,8 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 7))
             .withDescription("The adapter to use when capturing changes from the database. "
                     + "Options include: "
-                    + "'logminer': (the default) to capture changes using native dameneg LogMiner; "
-                    + "'xstream' to capture changes using dameng XStreams");
+                    + "'logminer': (the default) to capture changes using native Dameng LogMiner; "
+                    + "'xstream' to capture changes using Dameng XStreams");
 
     public static final Field LOG_MINING_STRATEGY = Field.create("log.mining.strategy")
             .withDisplayName("Log Mining Strategy")
@@ -485,7 +495,7 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "The maximum number of milliseconds that a LogMiner session lives for before being restarted. Defaults to 0 (indefinite until a log switch occurs)");
 
     public static final Field LOG_MINING_RESTART_CONNECTION = Field.create("log.mining.restart.connection")
-            .withDisplayName("Restarts Dameng database connection when reaching maximum session time or database log switch")
+            .withDisplayName("Restarts Oracle database connection when reaching maximum session time or database log switch")
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
@@ -514,7 +524,7 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Specifies how the filter configuration is applied to the LogMiner database query. " + System.lineSeparator() +
                     "none - The query does not apply any schema or table filters, all filtering is at runtime by the connector." + System.lineSeparator() +
                     "in - The query uses SQL in-clause expressions to specify the schema or table filters." + System.lineSeparator() +
-                    "regex - The query uses Dameng REGEXP_LIKE expressions to specify the schema or table filters." + System.lineSeparator());
+                    "regex - The query uses Oracle REGEXP_LIKE expressions to specify the schema or table filters." + System.lineSeparator());
 
     public static final Field LOG_MINING_READ_ONLY = Field.createInternal("log.mining.read.only")
             .withDisplayName("Runs the connector in read-only mode")
@@ -679,7 +689,7 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withWidth(Width.SHORT)
             .withDefault(false)
             .withImportance(Importance.LOW)
-            .withDescription("When Dameng is configured to use EXTENDED string sizes, there are some use cases where LogMiner will " +
+            .withDescription("When Oracle is configured to use EXTENDED string sizes, there are some use cases where LogMiner will " +
                     "not escape single quotes within a column value, which will lead to value truncation.");
 
     public static final Field LOG_MINING_CLIENTID_INCLUDE_LIST = Field.create("log.mining.clientid.include.list")
@@ -745,124 +755,6 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDefault(1)
             .withDescription("Adjusts the LAST_REDO_SCN from V$THREAD by this value.");
 
-    public static final Field LOG_MINING_HASH_AREA_SIZE = Field.createInternal("log.mining.hash.area.size")
-            .withDisplayName("Hash Area Size")
-            .withType(Type.LONG)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDefault(0)
-            .withValidation(Field::isNonNegativeLong)
-            .withDescription("Specifies the maximum memory in bytes the LogMiner session can use for performing SQL join operations. " +
-                    "Setting this to 0 (the default) uses the database's default HASH_AREA_SIZE.");
-
-    public static final Field LOG_MINING_SORT_AREA_SIZE = Field.createInternal("log.mining.sort.area.size")
-            .withDisplayName("Sort Area Size")
-            .withType(Type.LONG)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDefault(0)
-            .withValidation(Field::isNonNegativeLong)
-            .withDescription("Specifies the maximum memory in bytes the LogMiner session can use for performing SQL sort operations. " +
-                    "Setting this to 0 (the default) uses the database's default SORT_AREA_SIZE.");
-    
-    @Deprecated
-    public static final Field TABLENAME_CASE_INSENSITIVE = Field.create("database.tablename.case.insensitive")
-            .withDisplayName("Case insensitive table names")
-            .withType(Type.BOOLEAN)
-            .withDefault(false)
-            .withImportance(Importance.LOW)
-            .withDescription("Deprecated: Case insensitive table names; set to 'true' for Oracle 11g, 'false' (default) otherwise.");
-    public static final Field ORACLE_VERSION = Field.createInternal("database.oracle.version")
-            .withDisplayName("Oracle version, 11 or 12+")
-            .withType(Type.STRING)
-            .withImportance(Importance.LOW)
-            .withDescription("Deprecated: For default Oracle 12+, use default pos_version value v2, for Oracle 11, use pos_version value v1.");
-    //    public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
-//            .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
-    
-    // this option could be true up to Oracle 18c version. Starting from Oracle 19c this option cannot be true todo should we do it?
-    public static final Field CONTINUOUS_MINE = Field.create("log.mining.continuous.mine")
-            .withDisplayName("Should log mining session configured with CONTINUOUS_MINE setting?")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDefault(false)
-            .withValidation(Field::isBoolean)
-            .withDescription("If true, CONTINUOUS_MINE option will be added to the log mining session. This will manage log files switches seamlessly.");
-   
-    public static final Field LOG_MINING_HISTORY_RECORDER_CLASS = Field.create("log.mining.history.recorder.class")
-            .withDisplayName("Log Mining History Recorder Class")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.MEDIUM)
-            .withInvisibleRecommender()
-            .withDescription("Allows connector deployment to capture log mining results");
-    public static final Field LOG_MINING_HISTORY_RETENTION = Field.create("database.history.retention.hours")
-            .withDisplayName("Log Mining history retention")
-            .withType(Type.LONG)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(0)
-            .withDescription("Hours to keep Log Mining history.  By default, no history is retained.");
-    public static final Field LOG_MINING_TRANSACTION_RETENTION = Field.create("log.mining.transaction.retention.hours")
-            .withDisplayName("Log Mining long running transaction retention")
-            .withType(Type.LONG)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(0)
-            .withValidation(Field::isNonNegativeInteger)
-            .withDescription("Hours to keep long running transactions in transaction buffer between log mining sessions.  By default, all transactions are retained.");
-    
-    public static final Field RAC_SYSTEM = Field.create("database.rac")
-            .withDisplayName("Oracle RAC")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withDefault(false)
-            .withDescription("Flag to if it is RAC system");
-    
-    public static final Field LOG_MINING_DML_PARSER = Field.createInternal("log.mining.dml.parser")
-            .withDisplayName("Log Mining DML parser implementation")
-            .withEnum(LogMiningDmlParser.class, LogMiningDmlParser.FAST)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDescription("The parser implementation to use when parsing DML operations:" +
-                    "'legacy': the legacy parser implementation based on JSqlParser; " +
-                    "'fast': the robust parser implementation that is streamlined specifically for LogMiner redo format");
-    public static final Field LOG_MINING_ARCHIVE_LOG_HOURS = Field.create("log.mining.archive.log.hours")
-            .withDisplayName("Log Mining Archive Log Hours")
-            .withType(Type.LONG)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDefault(0)
-            .withDescription("The number of hours in the past from SYSDATE to mine archive logs.  Using 0 mines all available archive logs");
-    public static final List<String> EXCLUDED_SCHEMAS = Collections.unmodifiableList(Arrays.asList("appqossys", "audsys",
-            "ctxsys", "dvsys", "dbsfwuser", "dbsnmp", "gsmadmin_internal", "lbacsys", "mdsys", "ojvmsys", "olapsys",
-            "orddata", "ordsys", "outln", "sys", "system", "wmsys", "xdb"));
-    
-    protected static final int DEFAULT_VIEW_FETCH_SIZE = 10_000;
-    public static final Field LOG_MINING_VIEW_FETCH_SIZE = Field.create("log.mining.view.fetch.size")
-            .withDisplayName("Number of content records that will be fetched.")
-            .withType(Type.LONG)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDefault(DEFAULT_VIEW_FETCH_SIZE)
-            .withDescription("The number of content records that will be fetched from the LogMiner content view.");
-    
-    public static final Field AUTO_COMMIT_TIMEOUT = Field.create("debezium.source.transaction.auto.commit.timeout.ms")
-            .withDisplayName("Transaction auto-commit timeout in milliseconds")
-            .withType(Type.LONG)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(1000L)
-            .withDescription("The time in milliseconds after which an uncommitted transaction will be auto-committed.");
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(DamengConnectorConfig.class);
-    private final String databaseName;
-    private final String pdbName;
-    private final String xoutServerName;
-    private final SnapshotMode snapshotMode;
-    private final Boolean tablenameCaseInsensitive;
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Dameng")
             .excluding(
@@ -877,120 +769,1419 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
                     USER,
                     PASSWORD,
                     DATABASE_NAME,
+                    QUERY_TIMEOUT_MS,
                     PDB_NAME,
                     XSTREAM_SERVER_NAME,
                     SNAPSHOT_MODE,
                     CONNECTOR_ADAPTER,
                     LOG_MINING_STRATEGY,
-                    URL,
-                    TABLENAME_CASE_INSENSITIVE,
-                    ORACLE_VERSION)
+                    URL)
             .connector(
                     QUERY_FETCH_SIZE,
                     SNAPSHOT_ENHANCEMENT_TOKEN,
-                    RAC_SYSTEM,
+                    SNAPSHOT_LOCKING_MODE,
                     RAC_NODES,
-                    LOG_MINING_HISTORY_RECORDER_CLASS,
-                    LOG_MINING_HISTORY_RETENTION,
-                    LOG_MINING_ARCHIVE_LOG_HOURS,
+                    INTERVAL_HANDLING_MODE,
+                    ARCHIVE_LOG_HOURS,
                     LOG_MINING_BATCH_SIZE_DEFAULT,
                     LOG_MINING_BATCH_SIZE_MIN,
                     LOG_MINING_BATCH_SIZE_MAX,
+                    LOG_MINING_BATCH_SIZE_INCREMENT,
                     LOG_MINING_SLEEP_TIME_DEFAULT_MS,
                     LOG_MINING_SLEEP_TIME_MIN_MS,
                     LOG_MINING_SLEEP_TIME_MAX_MS,
                     LOG_MINING_SLEEP_TIME_INCREMENT_MS,
-                    LOG_MINING_TRANSACTION_RETENTION,
-                    LOG_MINING_DML_PARSER,
-                    AUTO_COMMIT_TIMEOUT
-            )
+                    LOG_MINING_TRANSACTION_RETENTION_MS,
+                    LOG_MINING_ARCHIVE_LOG_ONLY_MODE,
+                    LOB_ENABLED,
+                    LOG_MINING_USERNAME_INCLUDE_LIST,
+                    LOG_MINING_USERNAME_EXCLUDE_LIST,
+                    ARCHIVE_DESTINATION_NAME,
+                    LOG_MINING_BUFFER_TYPE,
+                    LOG_MINING_BUFFER_DROP_ON_STOP,
+                    LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL,
+                    LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS,
+                    LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS,
+                    LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS,
+                    LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES,
+                    LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD,
+                    LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS,
+                    LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN,
+                    LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS,
+                    UNAVAILABLE_VALUE_PLACEHOLDER,
+                    BINARY_HANDLING_MODE,
+                    SCHEMA_NAME_ADJUSTMENT_MODE,
+                    LOG_MINING_LOG_QUERY_MAX_RETRIES,
+                    LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS,
+                    LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS,
+                    LOG_MINING_SESSION_MAX_MS,
+                    LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE,
+                    LOG_MINING_READ_ONLY,
+                    LOG_MINING_FLUSH_TABLE_NAME,
+                    LOG_MINING_QUERY_FILTER_MODE,
+                    LOG_MINING_RESTART_CONNECTION,
+                    LOG_MINING_MAX_SCN_DEVIATION_MS,
+                    LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST,
+                    LOG_MINING_INCLUDE_REDO_SQL,
+                    OLR_SOURCE,
+                    OLR_HOST,
+                    OLR_PORT,
+                    SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES,
+                    LOG_MINING_CONTINUOUS_MINE,
+                    LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG,
+                    LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG,
+                    LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG,
+                    LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG,
+                    LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG,
+                    OBJECT_ID_CACHE_SIZE,
+                    LOG_MINING_SQL_RELAXED_QUOTE_DETECTION,
+                    LOG_MINING_CLIENTID_INCLUDE_LIST,
+                    LOG_MINING_CLIENTID_EXCLUDE_LIST,
+                    LOG_MINING_RESUME_POSITION_INTERVAL_MS,
+                    LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START,
+                    LOG_MINING_PATH_DICTIONARY,
+                    LOG_MINING_READONLY_HOSTNAME,
+                    LEGACY_DECIMAL_HANDLING_STRATEGY,
+                    LOG_MINING_USE_CTE_QUERY,
+                    LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT)
+            .events(SOURCE_INFO_STRUCT_MAKER,
+                    SIGNAL_DATA_COLLECTION)
             .create();
-    private final String oracleVersion;
-    private final HistoryRecorder logMiningHistoryRecorder;
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALLFIELDS = Field.setOf(CONFIG_DEFINITION.all());
-    private final Configuration jdbcConfig;
-    private final ConnectorAdapter connectorAdapter;
-    private final String snapshotEnhancementToken;
-    private final SnapshotLockingMode snapshotLockingMode;
-    // LogMiner options
-    private final LogMiningStrategy logMiningStrategy;
-    private final long logMiningHistoryRetentionHours;
-    private final Set<String> racNodes;
-    private final boolean logMiningContinuousMine;
-    private final Duration logMiningArchiveLogRetention;
-    private final int logMiningBatchSizeMin;
-    private final int logMiningBatchSizeMax;
-    private final int logMiningBatchSizeDefault;
-    private final int logMiningViewFetchSize;
-    private final Duration logMiningSleepTimeMin;
-    private final Duration logMiningSleepTimeMax;
-    private final Duration logMiningSleepTimeDefault;
-    private final boolean logMiningBufferDropOnStop;
-    private final Duration logMiningSleepTimeIncrement;
-    private final Duration logMiningTransactionRetention;
-    private final Long autoCommitTimeout;
-    private final LogMiningDmlParser dmlParser;
-
-    public DamengConnectorConfig(Configuration config) {
-        super(
-                DamengConnector.class,
-                config,
-                new SystemTablesPredicate(config),
-                x -> x.schema() + "." + x.table(),
-                true,
-                DEFAULT_QUERY_FETCH_SIZE,
-                ColumnFilterMode.SCHEMA,
-                false
-        );
-
-        this.databaseName = toUpperCase(config.getString(DATABASE_NAME));
-        this.pdbName = toUpperCase(config.getString(PDB_NAME));
-        this.xoutServerName = config.getString(XSTREAM_SERVER_NAME);
-        this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
-        this.tablenameCaseInsensitive = resolveTableNameCaseInsensitivity(config);
-        this.oracleVersion = config.getString(ORACLE_VERSION);
-        this.logMiningHistoryRecorder = resolveLogMiningHistoryRecorder(config);
-        this.jdbcConfig = config.subset(DATABASE_CONFIG_PREFIX, true);
-        this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
-        this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
-
-        // LogMiner
-        this.connectorAdapter = ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER));
-        this.logMiningStrategy = LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY));
-        this.logMiningHistoryRetentionHours = config.getLong(LOG_MINING_HISTORY_RETENTION);
-        this.racNodes = Strings.setOf(config.getString(RAC_NODES), String::new);
-        this.logMiningContinuousMine = config.getBoolean(CONTINUOUS_MINE);
-        this.logMiningArchiveLogRetention = Duration.ofHours(config.getLong(LOG_MINING_ARCHIVE_LOG_HOURS));
-        this.logMiningBatchSizeMin = config.getInteger(LOG_MINING_BATCH_SIZE_MIN);
-        this.logMiningBatchSizeMax = config.getInteger(LOG_MINING_BATCH_SIZE_MAX);
-        this.logMiningBatchSizeDefault = config.getInteger(LOG_MINING_BATCH_SIZE_DEFAULT);
-        this.logMiningViewFetchSize = config.getInteger(LOG_MINING_VIEW_FETCH_SIZE);
-        this.logMiningSleepTimeMin = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_MIN_MS));
-        this.logMiningSleepTimeMax = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_MAX_MS));
-        this.logMiningSleepTimeDefault = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_DEFAULT_MS));
-        this.logMiningBufferDropOnStop = config.getBoolean(LOG_MINING_BUFFER_DROP_ON_STOP);
-        this.logMiningSleepTimeIncrement = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_INCREMENT_MS));
-        this.logMiningTransactionRetention = Duration.ofHours(config.getInteger(LOG_MINING_TRANSACTION_RETENTION));
-        this.dmlParser = LogMiningDmlParser.parse(config.getString(LOG_MINING_DML_PARSER));
-        this.autoCommitTimeout = config.getLong(AUTO_COMMIT_TIMEOUT);
-    }
+    public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
 
     public static ConfigDef configDef() {
         return CONFIG_DEFINITION.configDef();
     }
 
-    private static String toUpperCase(String property) {
-        return property == null ? null : property.toUpperCase();
+    public static final List<String> EXCLUDED_SCHEMAS = Collections.unmodifiableList(Arrays.asList("appqossys", "audsys",
+            "ctxsys", "dvsys", "dbsfwuser", "dbsnmp", "ggsharedcap", "gsmadmin_internal", "lbacsys", "mdsys", "ojvmsys", "olapsys",
+            "orddata", "ordsys", "outln", "sys", "system", "vecsys", "wmsys", "xdb"));
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DamengConnectorConfig.class);
+
+    private final String databaseName;
+    private final String pdbName;
+    private final String xoutServerName;
+    private final IntervalHandlingMode intervalHandlingMode;
+    private final SnapshotMode snapshotMode;
+
+    private ConnectorAdapter connectorAdapter;
+    private final StreamingAdapter streamingAdapter;
+    private final String snapshotEnhancementToken;
+    private final SnapshotLockingMode snapshotLockingMode;
+    private final int queryFetchSize;
+    private final int snapshotRetryDatabaseErrorsMaxRetries;
+    private final int objectIdToTableIdCacheSize;
+    private final boolean legacyDecimalHandlingStrategy;
+
+    // LogMiner options
+    private final LogMiningStrategy logMiningStrategy;
+    private final Set<String> racNodes;
+    private final Duration archiveLogRetention;
+    private final int logMiningBatchSizeMin;
+    private final int logMiningBatchSizeMax;
+    private final int logMiningBatchSizeDefault;
+    private final int logMiningBatchSizeIncrement;
+    private final Duration logMiningSleepTimeMin;
+    private final Duration logMiningSleepTimeMax;
+    private final Duration logMiningSleepTimeDefault;
+    private final Duration logMiningSleepTimeIncrement;
+    private final Duration logMiningTransactionRetention;
+    private final boolean archiveLogOnlyMode;
+    private final Duration archiveLogOnlyScnPollTime;
+    private final boolean lobEnabled;
+    private final Set<String> logMiningUsernameIncludes;
+    private final Set<String> logMiningUsernameExcludes;
+    private final LogMiningBufferType logMiningBufferType;
+    private final long logMiningBufferTransactionEventsThreshold;
+    private final boolean logMiningBufferDropOnStop;
+    private final int logMiningScnGapDetectionGapSizeMin;
+    private final int logMiningScnGapDetectionTimeIntervalMaxMs;
+    private final int logMiningLogFileQueryMaxRetries;
+    private final Duration logMiningInitialDelay;
+    private final Duration logMiningMaxDelay;
+    private final Duration logMiningMaximumSession;
+    private final TransactionSnapshotBoundaryMode logMiningTransactionSnapshotBoundaryMode;
+    private final Boolean logMiningReadOnly;
+    private final String logMiningFlushTableName;
+    private final LogMiningQueryFilterMode logMiningQueryFilterMode;
+    private final Boolean logMiningRestartConnection;
+    private final Duration logMiningMaxScnDeviation;
+    private final String logMiningInifispanGlobalConfiguration;
+    private final Set<String> logMiningSchemaChangesUsernameExcludes;
+    private final Boolean logMiningIncludeRedoSql;
+    private final boolean logMiningContinuousMining;
+    private final Configuration logMiningEhCacheConfiguration;
+    private final boolean logMiningUseSqlRelaxedQuoteDetection;
+    private final Set<String> logMiningClientIdIncludes;
+    private final Set<String> logMiningClientIdExcludes;
+    private final String logMiningPathToDictionary;
+    private final boolean logMiningUseCteQuery;
+    private final String readonlyHostname;
+    private final Integer logMiningRedoThreadScnAdjustment;
+    private final ArchiveDestinationNameResolver destinationNameResolver;
+
+    private final String openLogReplicatorSource;
+    private final String openLogReplicatorHostname;
+    private final Integer openLogReplicatorPort;
+
+    private final Duration resumePositionUpdateInterval;
+
+    public DamengConnectorConfig(Configuration config) {
+        super(
+                DamengConnector.class, config,
+                new SystemTablesPredicate(config),
+                x -> x.schema() + "." + x.table(),
+                true,
+                DEFAULT_QUERY_FETCH_SIZE,
+                ColumnFilterMode.SCHEMA,
+                false);
+
+        this.databaseName = DamengUtils.getObjectName(config.getString(DATABASE_NAME));
+        this.pdbName = DamengUtils.getObjectName(config.getString(PDB_NAME));
+        this.xoutServerName = config.getString(XSTREAM_SERVER_NAME);
+        this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(INTERVAL_HANDLING_MODE));
+        this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
+        this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
+        this.connectorAdapter = ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER));
+        this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
+        this.lobEnabled = config.getBoolean(LOB_ENABLED);
+        this.objectIdToTableIdCacheSize = config.getInteger(OBJECT_ID_CACHE_SIZE);
+        this.legacyDecimalHandlingStrategy = config.getBoolean(LEGACY_DECIMAL_HANDLING_STRATEGY);
+
+        this.streamingAdapter = this.connectorAdapter.getInstance(this);
+        if (this.streamingAdapter == null) {
+            throw new DebeziumException("Unable to instantiate the connector adapter implementation");
+        }
+
+        this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
+        this.snapshotRetryDatabaseErrorsMaxRetries = config.getInteger(SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES);
+
+        // LogMiner
+        this.logMiningStrategy = LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY));
+        this.racNodes = resolveRacNodes(config);
+        this.archiveLogRetention = config.getDuration(ARCHIVE_LOG_HOURS, ChronoUnit.HOURS);
+        this.logMiningBatchSizeMin = config.getInteger(LOG_MINING_BATCH_SIZE_MIN);
+        this.logMiningBatchSizeMax = config.getInteger(LOG_MINING_BATCH_SIZE_MAX);
+        this.logMiningBatchSizeDefault = config.getInteger(LOG_MINING_BATCH_SIZE_DEFAULT);
+        this.logMiningBatchSizeIncrement = config.getInteger(LOG_MINING_BATCH_SIZE_INCREMENT);
+        this.logMiningSleepTimeMin = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_MIN_MS));
+        this.logMiningSleepTimeMax = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_MAX_MS));
+        this.logMiningSleepTimeDefault = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_DEFAULT_MS));
+        this.logMiningSleepTimeIncrement = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_INCREMENT_MS));
+        this.logMiningTransactionRetention = config.getDuration(LOG_MINING_TRANSACTION_RETENTION_MS, ChronoUnit.MILLIS);
+        this.archiveLogOnlyMode = config.getBoolean(LOG_MINING_ARCHIVE_LOG_ONLY_MODE);
+        this.logMiningUsernameIncludes = Strings.setOfTrimmed(config.getString(LOG_MINING_USERNAME_INCLUDE_LIST), String::new);
+        this.logMiningUsernameExcludes = Strings.setOfTrimmed(config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST), String::new);
+        this.logMiningBufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
+        this.logMiningBufferTransactionEventsThreshold = config.getLong(LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD);
+        this.logMiningBufferDropOnStop = config.getBoolean(LOG_MINING_BUFFER_DROP_ON_STOP);
+        this.archiveLogOnlyScnPollTime = Duration.ofMillis(config.getInteger(LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS));
+        this.logMiningScnGapDetectionGapSizeMin = config.getInteger(LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN);
+        this.logMiningScnGapDetectionTimeIntervalMaxMs = config.getInteger(LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS);
+        this.logMiningLogFileQueryMaxRetries = config.getInteger(LOG_MINING_LOG_QUERY_MAX_RETRIES);
+        this.logMiningInitialDelay = Duration.ofMillis(config.getLong(LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS));
+        this.logMiningMaxDelay = Duration.ofMillis(config.getLong(LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS));
+        this.logMiningMaximumSession = Duration.ofMillis(config.getLong(LOG_MINING_SESSION_MAX_MS));
+        this.logMiningTransactionSnapshotBoundaryMode = TransactionSnapshotBoundaryMode.parse(config.getString(LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE));
+        this.logMiningReadOnly = config.getBoolean(LOG_MINING_READ_ONLY);
+        this.logMiningFlushTableName = config.getString(LOG_MINING_FLUSH_TABLE_NAME);
+        this.logMiningQueryFilterMode = LogMiningQueryFilterMode.parse(config.getString(LOG_MINING_QUERY_FILTER_MODE));
+        this.logMiningRestartConnection = config.getBoolean(LOG_MINING_RESTART_CONNECTION);
+        this.logMiningMaxScnDeviation = Duration.ofMillis(config.getLong(LOG_MINING_MAX_SCN_DEVIATION_MS));
+        this.logMiningInifispanGlobalConfiguration = config.getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL);
+        this.logMiningSchemaChangesUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST), String::new);
+        this.logMiningIncludeRedoSql = config.getBoolean(LOG_MINING_INCLUDE_REDO_SQL);
+        this.logMiningContinuousMining = config.getBoolean(LOG_MINING_CONTINUOUS_MINE);
+        this.logMiningUseSqlRelaxedQuoteDetection = config.getBoolean(LOG_MINING_SQL_RELAXED_QUOTE_DETECTION);
+        this.logMiningClientIdIncludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_INCLUDE_LIST), String::new);
+        this.logMiningClientIdExcludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_EXCLUDE_LIST), String::new);
+        this.logMiningPathToDictionary = config.getString(LOG_MINING_PATH_DICTIONARY);
+        this.logMiningUseCteQuery = config.getBoolean(LOG_MINING_USE_CTE_QUERY);
+        this.readonlyHostname = config.getString(LOG_MINING_READONLY_HOSTNAME);
+        this.logMiningRedoThreadScnAdjustment = config.getInteger(LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT);
+
+        this.logMiningEhCacheConfiguration = config.subset("log.mining.buffer.ehcache", false);
+
+        final List<String> destinationNames = Strings.listOfTrimmed(config.getString(ARCHIVE_DESTINATION_NAME), String::new);
+        this.destinationNameResolver = new ArchiveDestinationNameResolver(destinationNames);
+
+        // OpenLogReplicator
+        this.openLogReplicatorSource = config.getString(OLR_SOURCE);
+        this.openLogReplicatorHostname = config.getString(OLR_HOST);
+        this.openLogReplicatorPort = config.getInteger(OLR_PORT, 0);
+
+        this.resumePositionUpdateInterval = Duration.ofMillis(config.getLong(LOG_MINING_RESUME_POSITION_INTERVAL_MS));
     }
 
-    private static HistoryRecorder resolveLogMiningHistoryRecorder(Configuration config) {
-        if (!config.hasKey(LOG_MINING_HISTORY_RECORDER_CLASS.name())) {
-            return new NeverHistoryRecorder();
+    public String getDatabaseName() {
+        return databaseName;
+    }
+
+    public String getPdbName() {
+        return pdbName;
+    }
+
+    public String getCatalogName() {
+        return pdbName != null ? pdbName : databaseName;
+    }
+
+    public String getXoutServerName() {
+        return xoutServerName;
+    }
+
+    public IntervalHandlingMode getIntervalHandlingMode() {
+        return intervalHandlingMode;
+    }
+
+    public SnapshotMode getSnapshotMode() {
+        return snapshotMode;
+    }
+
+    public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
+        return Optional.ofNullable(snapshotLockingMode);
+    }
+
+    @Override
+    public int getQueryFetchSize() {
+        return queryFetchSize;
+    }
+
+    public int getSnapshotRetryDatabaseErrorsMaxRetries() {
+        return snapshotRetryDatabaseErrorsMaxRetries;
+    }
+
+    @Override
+    public HistoryRecordComparator getHistoryRecordComparator() {
+        return getAdapter().getHistoryRecordComparator();
+    }
+
+    /**
+     * Defines modes of representation of {@code interval} datatype
+     */
+    public enum IntervalHandlingMode implements EnumeratedValue {
+
+        /**
+         * Represents interval as inexact microseconds count
+         */
+        NUMERIC("numeric"),
+
+        /**
+         * Represents interval as ISO 8601 time interval
+         */
+        STRING("string");
+
+        private final String value;
+
+        IntervalHandlingMode(String value) {
+            this.value = value;
         }
-        return config.getInstance(LOG_MINING_HISTORY_RECORDER_CLASS, HistoryRecorder.class);
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Convert mode name into the logical value
+         *
+         * @param value the configuration property value ; may not be null
+         * @return the matching option, or null if the match is not found
+         */
+        public static IntervalHandlingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (IntervalHandlingMode option : IntervalHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Convert mode name into the logical value
+         *
+         * @param value the configuration property value ; may not be null
+         * @param defaultValue the default value ; may be null
+         * @return the matching option or null if the match is not found and non-null default is invalid
+         */
+        public static IntervalHandlingMode parse(String value, String defaultValue) {
+            IntervalHandlingMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
+    /**
+     * The set of predefined SnapshotMode options or aliases.
+     */
+    public enum SnapshotMode implements EnumeratedValue {
+
+        /**
+         * Performs a snapshot of data and schema upon each connector start.
+         */
+        ALWAYS("always"),
+
+        /**
+         * Perform a snapshot of data and schema upon initial startup of a connector.
+         */
+        INITIAL("initial"),
+
+        /**
+         * Perform a snapshot of data and schema upon initial startup of a connector and stop after initial consistent snapshot.
+         */
+        INITIAL_ONLY("initial_only"),
+
+        /**
+         * Perform a snapshot of the schema but no data upon initial startup of a connector.
+         */
+        NO_DATA("no_data"),
+
+        /**
+         * Perform a snapshot of only the database schemas (without data) and then begin reading the redo log at the current redo log position.
+         * This can be used for recovery only if the connector has existing offsets and the schema.history.internal.kafka.topic does not exist (deleted).
+         * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
+         * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
+         */
+        RECOVERY("recovery"),
+
+        /**
+         * Perform a snapshot when it is needed.
+         */
+        WHEN_NEEDED("when_needed"),
+
+        /**
+         * Allows control over snapshots by setting connectors properties prefixed with 'snapshot.mode.configuration.based'.
+         */
+        CONFIGURATION_BASED("configuration_based"),
+
+        /**
+         * Inject a custom snapshotter, which allows for more control over snapshots.
+         */
+        CUSTOM("custom");
+
+        private final String value;
+
+        SnapshotMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+
+            for (SnapshotMode option : SnapshotMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotMode parse(String value, String defaultValue) {
+            SnapshotMode mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
+    public enum SnapshotLockingMode implements EnumeratedValue {
+        /**
+         * This mode will allow concurrent access to the table during the snapshot but prevents any
+         * session from acquiring any table-level exclusive lock.
+         */
+        SHARED("shared"),
+
+        /**
+         * This mode will avoid using ANY table locks during the snapshot process.
+         * This mode should be used carefully only when no schema changes are to occur.
+         */
+        NONE("none"),
+
+        /**
+         * Inject a custom mode, which allows for more control over snapshot locking.
+         */
+        CUSTOM("custom");
+
+        private final String value;
+
+        SnapshotLockingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public boolean usesLocking() {
+            return !value.equals(NONE.value);
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be {@code null}
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotLockingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (SnapshotLockingMode option : SnapshotLockingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be {@code null}
+         * @param defaultValue the default value; may be {@code null}
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotLockingMode parse(String value, String defaultValue) {
+            SnapshotLockingMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
+    /**
+     * Controls how in-progress transactions that occur just before and at the snapshot boundary
+     * are to be handled by the connector when transitioning to the streaming phase.
+     */
+    public enum TransactionSnapshotBoundaryMode implements EnumeratedValue {
+        /**
+         * Specifies that the in-progress transaction support at the snapshot boundary should be
+         * skipped and that only transactions committed prior to the snapshot SCN and those that
+         * are started after the snapshot SCN will be captured.
+         */
+        SKIP("skip"),
+
+        /**
+         * Specifies that in-progress transactions that are available in the {@code V$TRANSACTION}
+         * table will be captured and emitted when streaming begins. If a transaction is not in
+         * this view, and its changes were not captured by Oracle Flashback query based on the
+         * snapshot SCN, that transaction will not be captured.
+         */
+        TRANSACTION_VIEW_ONLY("transaction_view_only"),
+
+        /**
+         * Specifies that in-progress transactions identified in the {@code V$TRANSACTION} table as
+         * well as any in-progress transactions as of the current SCN that may have been committed
+         * immediately prior to or at the snapshot SCN will be captured. This is done by starting a
+         * special LogMiner session to gather these transactions prior to starting the snapshot.
+         */
+        ALL("all");
+
+        private final String value;
+
+        TransactionSnapshotBoundaryMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be {@code null}
+         * @return the matching option, or null if no match is found
+         */
+        public static TransactionSnapshotBoundaryMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (TransactionSnapshotBoundaryMode option : TransactionSnapshotBoundaryMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be {@code null}
+         * @param defaultValue the default value; may be {@code null}
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static TransactionSnapshotBoundaryMode parse(String value, String defaultValue) {
+            TransactionSnapshotBoundaryMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
+    public enum ConnectorAdapter implements EnumeratedValue {
+
+        /**
+         * This is based on XStream API.
+         */
+        XSTREAM("XStream") {
+            @Override
+            public String getConnectionUrl() {
+                return "jdbc:oracle:oci:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
+            }
+
+            @Override
+            public StreamingAdapter getInstance(DamengConnectorConfig connectorConfig) {
+                return Instantiator.getInstanceWithProvidedConstructorType(
+                        "io.debezium.connector.oracle.xstream.XStreamAdapter",
+                        DamengConnectorConfig.class,
+                        connectorConfig);
+            }
+        },
+
+        /**
+         * This is based on LogMiner utility.
+         */
+        LOG_MINER("LogMiner") {
+            @Override
+            public String getConnectionUrl() {
+                return "jdbc:oracle:thin:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
+            }
+
+            @Override
+            public StreamingAdapter getInstance(DamengConnectorConfig connectorConfig) {
+                return Instantiator.getInstanceWithProvidedConstructorType(
+                        "io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerAdapter",
+                        DamengConnectorConfig.class,
+                        connectorConfig);
+            }
+        },
+
+        LOG_MINER_UNBUFFERED("LogMiner_Unbuffered") {
+            @Override
+            public String getConnectionUrl() {
+                return "jdbc:oracle:thin:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
+            }
+
+            @Override
+            public StreamingAdapter getInstance(DamengConnectorConfig connectorConfig) {
+                return Instantiator.getInstanceWithProvidedConstructorType(
+                        "io.debezium.connector.oracle.logminer.unbuffered.UnbufferedLogMinerAdapter",
+                        DamengConnectorConfig.class,
+                        connectorConfig);
+            }
+        },
+
+        /**
+         * This is based on OpenLogReplicator project.
+         */
+        OLR("OLR") {
+            @Override
+            public String getConnectionUrl() {
+                return "jdbc:oracle:thin:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
+            }
+
+            @Override
+            public StreamingAdapter getInstance(DamengConnectorConfig connectorConfig) {
+                return Instantiator.getInstanceWithProvidedConstructorType(
+                        "io.debezium.connector.oracle.olr.OpenLogReplicatorAdapter",
+                        DamengConnectorConfig.class,
+                        connectorConfig);
+            }
+        };
+
+        public abstract String getConnectionUrl();
+
+        public abstract StreamingAdapter getInstance(DamengConnectorConfig connectorConfig);
+
+        private final String value;
+
+        ConnectorAdapter(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static ConnectorAdapter parse(String value) {
+            if (value == null) {
+                return ConnectorAdapter.LOG_MINER;
+            }
+            value = value.trim();
+            for (ConnectorAdapter adapter : ConnectorAdapter.values()) {
+                if (adapter.getValue().equalsIgnoreCase(value)) {
+                    return adapter;
+                }
+            }
+            return null;
+        }
+
+        public static ConnectorAdapter parse(String value, String defaultValue) {
+            ConnectorAdapter mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
+    public enum LogMiningStrategy implements EnumeratedValue {
+
+        /**
+         * This strategy uses LogMiner with data dictionary in online catalog.
+         * This option will not capture DDL , but acts fast on REDO LOG switch events
+         * This option does not use CONTINUOUS_MINE option
+         */
+        ONLINE_CATALOG("online_catalog"),
+
+        /**
+         * This strategy uses LogMiner with data dictionary in REDO LOG files.
+         * This option will capture DDL, but will develop some lag on REDO LOG switch event and will eventually catch up
+         * This option does not use CONTINUOUS_MINE option
+         * This is default value
+         */
+        CATALOG_IN_REDO("redo_log_catalog"),
+
+        /**
+         * This strategy uses LogMiner with data dictionary located in ORACLE read-only server.
+         * This option need the path location of the dictionary file.
+         * This option is a combination with the {@code redo_log_catalog} strategy.
+         */
+        DICTIONARY_FROM_FILE("dictionary_from_file"),
+
+        /**
+         * This strategy combines the performance of {@code online_catalog} with the schema capture capabilities of
+         * the {@code redo_log_catalog} strategy. If LogMiner fails to reconstruct a DML event, this strategy will
+         * default to using Debezium's schema metadata to reconstruct the DML in-flight when LogMiner cannot.
+         */
+        HYBRID("hybrid");
+
+        private final String value;
+
+        LogMiningStrategy(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static LogMiningStrategy parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (LogMiningStrategy adapter : LogMiningStrategy.values()) {
+                if (adapter.getValue().equalsIgnoreCase(value)) {
+                    return adapter;
+                }
+            }
+            return null;
+        }
+
+        public static LogMiningStrategy parse(String value, String defaultValue) {
+            LogMiningStrategy mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
+    public enum LogMiningBufferType implements EnumeratedValue {
+        MEMORY("memory"),
+        INFINISPAN_EMBEDDED("infinispan_embedded"),
+        INFINISPAN_REMOTE("infinispan_remote"),
+        EHCACHE("ehcache");
+
+        private final String value;
+
+        LogMiningBufferType(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public boolean isInfinispan() {
+            return INFINISPAN_EMBEDDED.equals(this) || INFINISPAN_REMOTE.equals(this);
+        }
+
+        public boolean isInfinispanEmbedded() {
+            return INFINISPAN_EMBEDDED.equals(this);
+        }
+
+        public boolean isEhcache() {
+            return EHCACHE.equals(this);
+        }
+
+        public static LogMiningBufferType parse(String value) {
+            if (value == null) {
+                return null;
+            }
+
+            for (LogMiningBufferType option : LogMiningBufferType.values()) {
+                if (option.getValue().equalsIgnoreCase(value.trim())) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+
+        public static LogMiningBufferType parseWithDefaultFallback(String value) {
+            return parseOrDefault(value, (String) LOG_MINING_BUFFER_TYPE.defaultValue());
+        }
+
+        private static LogMiningBufferType parseOrDefault(String value, String defaultValue) {
+            LogMiningBufferType bufferType = parse(value);
+
+            if (bufferType == null && defaultValue != null) {
+                return parse(defaultValue);
+            }
+
+            return bufferType;
+        }
+
+    }
+
+    public enum LogMiningQueryFilterMode implements EnumeratedValue {
+        /**
+         * This filter mode does not add any predicates to the LogMiner query, all filtering of
+         * change data is done at runtime in the connector's Java code. This is the default
+         * mode.
+         */
+        NONE("none"),
+
+        /**
+         * This filter mode adds predicates to the LogMiner query, using standard SQL in-clause
+         * semantics. This mode expects that the include/exclude connector properties specify
+         * schemas and tables without regular expressions.
+         *
+         * This option may be the best performing option when there is substantially more data in
+         * the redo logs compared to the data wanting to be captured at the trade-off that the
+         * connector configuration is a bit more verbose with include/exclude filters.
+         */
+        IN("in"),
+
+        /**
+         * This filter mode adds predicates to the LogMiner query, using the Oracle REGEXP_LIKE
+         * operator. This mode supports the include/exclude connector properties specifying
+         * regular expressions.
+         *
+         * For the best performance, it's generally a good idea to limit the number of REGEXP_LIKE
+         * operators in the query as it's treated similar to the LIKE operator which often does
+         * not perform well on large data sets. The number of REGEXP_LIKE operators can be reduced
+         * by specifying complex regular expressions where a single expression can potentially
+         * match multiple schemas or tables.
+         */
+        REGEX("regex");
+
+        private final String value;
+
+        LogMiningQueryFilterMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static LogMiningQueryFilterMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (LogMiningQueryFilterMode mode : LogMiningQueryFilterMode.values()) {
+                if (mode.getValue().equalsIgnoreCase(value)) {
+                    return mode;
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * A {@link TableFilter} that excludes all Oracle system tables.
+     *
+     * @author Gunnar Morling
+     */
+    private static class SystemTablesPredicate implements TableFilter {
+
+        /**
+         * Pattern that matches temporary analysis tables created by the Compression Advisor subsystem.
+         * These tables will be ignored by the connector.
+         */
+        private final Pattern COMPRESSION_ADVISOR = Pattern.compile("^CMP[3|4]\\$[0-9]+$");
+
+        private final Configuration config;
+
+        SystemTablesPredicate(Configuration config) {
+            this.config = config;
+        }
+
+        @Override
+        public boolean isIncluded(TableId t) {
+            return !isExcludedSchema(t) && !isFlushTable(t) && !isCompressionAdvisorTable(t);
+        }
+
+        private boolean isExcludedSchema(TableId id) {
+            return EXCLUDED_SCHEMAS.contains(id.schema().toLowerCase());
+        }
+
+        private boolean isFlushTable(TableId id) {
+            return LogWriterFlushStrategy.isFlushTable(id, config.getString(USER), config.getString(LOG_MINING_FLUSH_TABLE_NAME));
+        }
+
+        private boolean isCompressionAdvisorTable(TableId id) {
+            return COMPRESSION_ADVISOR.matcher(id.table()).matches();
+        }
+    }
+
+    @Override
+    protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
+        return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
+    }
+
+    @Override
+    public String getContextName() {
+        return Module.contextName();
+    }
+
+    /**
+     * @return the connector adapter enum, use {@link #getAdapter()} for the adapter instance
+     */
+    public ConnectorAdapter getConnectorAdapter() {
+        return connectorAdapter;
+    }
+
+    /**
+     * @return the streaming adapter implementation
+     */
+    public StreamingAdapter getAdapter() {
+        return streamingAdapter;
+    }
+
+    /**
+     * @return {@code true} if the legacy decimal handling behavior is used, {@code false} otherwise
+     */
+    public boolean isUsingLegacyDecimalHandlingStrategy() {
+        return legacyDecimalHandlingStrategy;
+    }
+
+    /**
+     * @return Log Mining strategy
+     */
+    public LogMiningStrategy getLogMiningStrategy() {
+        return logMiningStrategy;
+    }
+
+    /**
+     * @return whether Oracle is using RAC
+     */
+    public Boolean isRacSystem() {
+        return !racNodes.isEmpty();
+    }
+
+    /**
+     * @return set of node hosts or ip addresses used in Oracle RAC
+     */
+    public Set<String> getRacNodes() {
+        return racNodes;
+    }
+
+    /**
+     * @return String token to replace
+     */
+    public String getTokenToReplaceInSnapshotPredicate() {
+        return snapshotEnhancementToken;
+    }
+
+    /**
+     * @return the duration that archive logs are scanned for log mining
+     */
+    public Duration getArchiveLogRetention() {
+        return archiveLogRetention;
+    }
+
+    /**
+     *
+     * @return int The minimum SCN interval used when mining redo/archive logs
+     */
+    public int getLogMiningBatchSizeMin() {
+        return logMiningBatchSizeMin;
+    }
+
+    /**
+     *
+     * @return int The maximum SCN interval used when mining redo/archive logs
+     */
+    public int getLogMiningBatchSizeMax() {
+        return logMiningBatchSizeMax;
+    }
+
+    /**
+     * @return the size to increment/decrement log mining batches
+     */
+    public int getLogMiningBatchSizeIncrement() {
+        return logMiningBatchSizeIncrement;
+    }
+
+    /**
+     *
+     * @return int Scn gap size for SCN gap detection
+     */
+    public int getLogMiningScnGapDetectionGapSizeMin() {
+        return logMiningScnGapDetectionGapSizeMin;
+    }
+
+    /**
+     *
+     * @return int Time interval for SCN gap detection
+     */
+    public int getLogMiningScnGapDetectionTimeIntervalMaxMs() {
+        return logMiningScnGapDetectionTimeIntervalMaxMs;
+    }
+
+    /**
+     *
+     * @return int The minimum sleep time used when mining redo/archive logs
+     */
+    public Duration getLogMiningSleepTimeMin() {
+        return logMiningSleepTimeMin;
+    }
+
+    /**
+     *
+     * @return int The maximum sleep time used when mining redo/archive logs
+     */
+    public Duration getLogMiningSleepTimeMax() {
+        return logMiningSleepTimeMax;
+    }
+
+    /**
+     *
+     * @return int The default sleep time used when mining redo/archive logs
+     */
+    public Duration getLogMiningSleepTimeDefault() {
+        return logMiningSleepTimeDefault;
+    }
+
+    /**
+     *
+     * @return int The increment in sleep time when doing auto-tuning while mining redo/archive logs
+     */
+    public Duration getLogMiningSleepTimeIncrement() {
+        return logMiningSleepTimeIncrement;
+    }
+
+    /**
+     * @return the duration for which long running transactions are permitted in the transaction buffer between log switches
+     */
+    public Duration getLogMiningTransactionRetention() {
+        return logMiningTransactionRetention;
+    }
+
+    /**
+     * @return true if the connector is to mine archive logs only, false to mine all logs.
+     */
+    public boolean isArchiveLogOnlyMode() {
+        return archiveLogOnlyMode;
+    }
+
+    /**
+     * @return the duration that archive log only will use to wait between polling scn availability
+     */
+    public Duration getArchiveLogOnlyScnPollTime() {
+        return archiveLogOnlyScnPollTime;
+    }
+
+    /**
+     * @return true if LOB fields are to be captured; false otherwise to not capture LOB fields.
+     */
+    public boolean isLobEnabled() {
+        return lobEnabled;
+    }
+
+    /**
+     * @return User names to include from the LogMiner query
+     */
+    public Set<String> getLogMiningUsernameIncludes() {
+        return logMiningUsernameIncludes;
+    }
+
+    /**
+     * @return User names to exclude from the LogMiner query
+     */
+    public Set<String> getLogMiningUsernameExcludes() {
+        return logMiningUsernameExcludes;
+    }
+
+    /**
+     * @return archive destination name resolver
+     */
+    public ArchiveDestinationNameResolver getArchiveDestinationNameResolver() {
+        return destinationNameResolver;
+    }
+
+    /**
+     * @return the log mining buffer type implementation to be used
+     */
+    public LogMiningBufferType getLogMiningBufferType() {
+        return logMiningBufferType;
+    }
+
+    /**
+     * @return the event count threshold for when a transaction should be discarded in the buffer.
+     */
+    public long getLogMiningBufferTransactionEventsThreshold() {
+        return logMiningBufferTransactionEventsThreshold;
+    }
+
+    /**
+     * @return whether buffer cache should be dropped on connector stop.
+     */
+    public boolean isLogMiningBufferDropOnStop() {
+        return logMiningBufferDropOnStop;
+    }
+
+    /**
+     *
+     * @return int The default SCN interval used when mining redo/archive logs
+     */
+    public int getLogMiningBatchSizeDefault() {
+        return logMiningBatchSizeDefault;
+    }
+
+    /**
+     * @return the maximum number of retries that should be used to resolve log filenames for mining
+     */
+    public int getMaximumNumberOfLogQueryRetries() {
+        return logMiningLogFileQueryMaxRetries;
+    }
+
+    /**
+     * @return the initial delay for the log query delay strategy
+     */
+    public Duration getLogMiningInitialDelay() {
+        return logMiningInitialDelay;
+    }
+
+    /**
+     * @return the maximum delay for the log query delay strategy
+     */
+    public Duration getLogMiningMaxDelay() {
+        return logMiningMaxDelay;
+    }
+
+    /**
+     * @return the infinispan global conifguration.
+     */
+    public String getLogMiningInifispanGlobalConfiguration() {
+        return logMiningInifispanGlobalConfiguration;
+    }
+
+    /**
+     * @return the maximum duration for a LogMiner session
+     */
+    public Optional<Duration> getLogMiningMaximumSession() {
+        return logMiningMaximumSession.toMillis() == 0L ? Optional.empty() : Optional.of(logMiningMaximumSession);
+    }
+
+    /**
+     * @return how in-progress transactions are the snapshot boundary are to be handled.
+     */
+    public TransactionSnapshotBoundaryMode getLogMiningTransactionSnapshotBoundaryMode() {
+        return logMiningTransactionSnapshotBoundaryMode;
+    }
+
+    /**
+     * @return true if log mining should operate in read-only mode.
+     */
+    public boolean isLogMiningReadOnly() {
+        return logMiningReadOnly;
+    }
+
+    /**
+     * @return the log mining flush table name
+     */
+    public String getLogMiningFlushTableName() {
+        return logMiningFlushTableName;
+    }
+
+    /**
+     * @return how the LogMiner query include/exclude filters are applied to the query.
+     */
+    public LogMiningQueryFilterMode getLogMiningQueryFilterMode() {
+        return logMiningQueryFilterMode;
+    }
+
+    /**
+     * @return whether the connector should restart the JDBC connection after log switches or maximum session windows.
+     */
+    public boolean isLogMiningRestartConnection() {
+        return logMiningRestartConnection;
+    }
+
+    /**
+     * Returns the deviation in milliseconds that should be applied to the end SCN calculation.
+     * If this is {@code 0}, then there is no deviation applied.
+     *
+     * @return the deviation duration.
+     */
+    public Duration getLogMiningMaxScnDeviation() {
+        return logMiningMaxScnDeviation;
+    }
+
+    /**
+     * Returns the list of usernames that should have schema changes excluded for.
+     *
+     * @return set of usernames
+     */
+    public Set<String> getLogMiningSchemaChangesUsernameExcludes() {
+        return logMiningSchemaChangesUsernameExcludes;
+    }
+
+    /**
+     * Returns whether to include the redo SQL in the source information block.
+     *
+     * @return if redo SQL is included in change events
+     */
+    public boolean isLogMiningIncludeRedoSql() {
+        return logMiningIncludeRedoSql;
+    }
+
+    /**
+     * Returns whether the LogMiner adapter should use continuous mining or not.
+     *
+     * @return true continuous mining should be used
+     */
+    @Deprecated
+    public boolean isLogMiningContinuousMining(DamengDatabaseVersion version) {
+        if (logMiningContinuousMining) {
+            if (version.getMajor() > 12) {
+                // Guards against users who may set this mistakenly, logs a WARN and explicitly sets the state
+                // within the streaming source explicitly to false
+                LOGGER.warn("Continuous mining is no longer available in Oracle {} and won't be used.", version);
+                return false;
+            }
+        }
+        return logMiningContinuousMining;
+    }
+
+    /**
+     * Returns the logical source to stream changes from when connecting to OpenLogReplicator.
+     *
+     * @return the logical source name
+     */
+    public String getOpenLogReplicatorSource() {
+        return openLogReplicatorSource;
+    }
+
+    /**
+     * Returns the hostname of the OpenLogReplicator network service.
+     *
+     * @return the hostname of the service
+     */
+    public String getOpenLogReplicatorHostname() {
+        return openLogReplicatorHostname;
+    }
+
+    /**
+     * Return the port of the OpenLogReplicator network service.
+     *
+     * @return the port of the service
+     */
+    public Integer getOpenLogReplicatorPort() {
+        return openLogReplicatorPort;
+    }
+
+    /**
+     * Get the Ehcache buffer configuration, which is all attributes under the configuration prefix
+     * "log.mining.buffer.ehcache" namespace, with the prefix removed.
+     *
+     * @return the ehcache transaction buffer configuration, never {@code null}
+     */
+    public Configuration getLogMiningEhcacheConfiguration() {
+        return logMiningEhCacheConfiguration;
+    }
+
+    /**
+     * Return the object id to table id cache size
+     *
+     * @return the maximum size of the object id to table id cache
+     */
+    public int getObjectIdToTableIdCacheSize() {
+        return objectIdToTableIdCacheSize;
+    }
+
+    /**
+     * Return whether the DML parser should use relaxed quote detection.
+     *
+     * @return true to use relaxed quote detection, false uses strict parsing rules
+     */
+    public boolean getLogMiningUseSqlRelaxedQuoteDetection() {
+        return logMiningUseSqlRelaxedQuoteDetection;
+    }
+
+    /**
+     * Get the include list for client identifiers.
+     *
+     * @return set of client identifier includes
+     */
+    public Set<String> getLogMiningClientIdIncludes() {
+        return logMiningClientIdIncludes;
+    }
+
+    /**
+     * Get the exclude list for client identifiers.
+     *
+     * @return set of client identifier exclusions
+     */
+    public Set<String> getLogMiningClientIdExcludes() {
+        return logMiningClientIdExcludes;
+    }
+
+    /**
+     * Get whether the mining session should use a CTE-based query.
+     */
+    public boolean isLogMiningUseCteQuery() {
+        return logMiningUseCteQuery;
+    }
+
+    /**
+     * The interval that the unbuffered resume position is recalculated.
+     */
+    public Duration getResumePositionUpdateInterval() {
+        return resumePositionUpdateInterval;
+    }
+
+    /**
+     * Return the log mining path to dictionary.
+     *
+     * @return the dictionary path
+     */
+    public String getLogMiningPathToDictionary() {
+        return logMiningPathToDictionary;
+    }
+
+    /**
+     * Return the read-only database hostname.
+     *
+     * @return the read-only hostname
+     */
+    public String getReadonlyHostname() {
+        return readonlyHostname;
+    }
+
+    /**
+     * Whether legacy LogMiner heap transaction start event non-buffering is enabled
+     */
+    public boolean isLegacyLogMinerHeapTransactionStartBehaviorEnabled() {
+        if (LogMiningBufferType.MEMORY.equals(getLogMiningBufferType())) {
+            // This only applies when using the heap buffer type
+            // Other buffer types always included the transaction start events regardless
+            return getConfig().getBoolean(LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START);
+        }
+        return false;
+    }
+
+    /**
+     * Adjustment to be subtracted from the {@code LAST_REDO_SCN} in {@code V$THREAD}.
+     */
+    public Integer getLogMiningRedoThreadScnAdjustment() {
+        return logMiningRedoThreadScnAdjustment;
+    }
+
+    @Override
+    public String getConnectorName() {
+        return Module.name();
+    }
+
+    private Set<String> resolveRacNodes(Configuration config) {
+        final boolean portProvided = config.hasKey(PORT.name());
+        final Set<String> nodes = Strings.setOf(config.getString(RAC_NODES), String::new);
+        return nodes.stream().map(node -> {
+            if (portProvided && !node.contains(":")) {
+                return node + ":" + config.getInteger(PORT);
+            }
+            else {
+                if (!portProvided && !node.contains(":")) {
+                    throw new DebeziumException("RAC node '" + node + "' must specify a port.");
+                }
+                return node;
+            }
+        }).collect(Collectors.toSet());
     }
 
     public static int validateOutServerName(Configuration config, Field field, ValidationOutput problems) {
@@ -1014,14 +2205,6 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
             return Field.isRequired(config, field, problems);
         }
         return 0;
-    }
-
-    private static Boolean resolveTableNameCaseInsensitivity(Configuration config) {
-        if (config.hasKey(TABLENAME_CASE_INSENSITIVE.name())) {
-            LOGGER.warn("The option '{}' is deprecated and will be removed in the future.", TABLENAME_CASE_INSENSITIVE.name());
-            return config.getBoolean(TABLENAME_CASE_INSENSITIVE);
-        }
-        return null;
     }
 
     public static int validateRacNodes(Configuration config, Field field, ValidationOutput problems) {
@@ -1065,7 +2248,8 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
                             bufferTypeName);
                 }
                 return 1;
-            } else if (LogMiningBufferType.INFINISPAN_REMOTE.equals(bufferType)) {
+            }
+            else if (LogMiningBufferType.INFINISPAN_REMOTE.equals(bufferType)) {
                 // Must supply the Hotrod server list property as a minimum when using Infinispan cluster mode
                 final String serverList = config.getString(RemoteInfinispanCacheProvider.HOTROD_SERVER_LIST);
                 if (Strings.isNullOrEmpty(serverList)) {
@@ -1091,7 +2275,7 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
     public static int validateLogMiningReadOnly(Configuration config, Field field, ValidationOutput problems) {
         if (isBufferedLogMiner(config)) {
             if (config.getBoolean(LOG_MINING_READ_ONLY)) {
-                LOGGER.warn("When using '{}', the LogMiner tablespace requires write access for the Oracle background LogMiner process; however, " +
+                LOGGER.warn("When using '{}', the LogMiner tablespace requires write access for the Dameng background LogMiner process; however, " +
                         "the connector itself will not perform any write operations against the database.", LOG_MINING_READ_ONLY.name());
                 final Set<String> racNodes = Strings.setOf(config.getString(RAC_NODES), String::new);
                 if (!racNodes.isEmpty()) {
@@ -1249,896 +2433,14 @@ public class DamengConnectorConfig extends HistorizedRelationalDatabaseConnector
         return 0;
     }
 
-    public String getDatabaseName() {
-        return databaseName;
-    }
-
-    public String getPdbName() {
-        return pdbName;
-    }
-
-    public String getCatalogName() {
-        return pdbName != null ? pdbName : databaseName;
-    }
-
-    public String getXoutServerName() {
-        return xoutServerName;
-    }
-
-    public SnapshotMode getSnapshotMode() {
-        return snapshotMode;
-    }
-
-    @Override
-    public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
-        return Optional.ofNullable(snapshotLockingMode);
-    }
-
-    /**
-     * Returns whether table name case is insensitive or not.  The method may return {@code null}
-     * which indicates the connector configuration does not specify a value and should therefore
-     * be resolved by the {@link DamengConnection}.
-     *
-     * @return whether table case is insensitive, may be {@code null}.
-     */
-    public Optional<Boolean> getTablenameCaseInsensitive() {
-        return Optional.ofNullable(tablenameCaseInsensitive);
-    }
-
-    public String getOracleVersion() {
-        return oracleVersion;
-    }
-
-    @Override
-    public HistoryRecordComparator getHistoryRecordComparator() {
-        return new HistoryRecordComparator() {
-            @Override
-            protected boolean isPositionAtOrBefore(Document recorded, Document desired) {
-                Scn recordedScn;
-                Scn desiredScn;
-                if (getAdapter() == ConnectorAdapter.XSTREAM) {
-                    return false;
-                } else {
-                    recordedScn = resolveScn(recorded);
-                    desiredScn = resolveScn(desired);
-                    return recordedScn.compareTo(desiredScn) < 1;
-                }
-            }
-
-            private Scn resolveScn(Document document) {
-                // prioritize reading scn as string and if not found, fallback to long data types
-                final String scn = document.getString(SourceInfo.SCN_KEY);
-                if (scn == null) {
-                    Long scnValue = document.getLong(SourceInfo.SCN_KEY);
-                    Scn.valueOf(scnValue == null ? 0 : scnValue);
-                }
-                return Scn.valueOf(scn);
-            }
-        };
-    }
-
-    @Override
-    protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        return new DamengSourceInfoStructMaker(Module.name(), Module.version(), this);
-    }
-
-    @Override
-    public String getContextName() {
-        return Module.contextName();
-    }
-
-    /**
-     * @return connection adapter
-     */
-    public ConnectorAdapter getAdapter() {
-        return connectorAdapter;
-    }
-
-    /**
-     * @return Log Mining strategy
-     */
-    public LogMiningStrategy getLogMiningStrategy() {
-        return logMiningStrategy;
-    }
-
-    /**
-     * @return whether log mining history is recorded
-     */
-    public Boolean isLogMiningHistoryRecorded() {
-        return logMiningHistoryRetentionHours > 0;
-    }
-
-    /**
-     * @return the log mining history recorder implementation, may be null
-     */
-    public HistoryRecorder getLogMiningHistoryRecorder() {
-        return logMiningHistoryRecorder;
-    }
-
-    /**
-     * @return the number of hours log mining history is retained if history is recorded
-     */
-    public long getLogMinerHistoryRetentionHours() {
-        return logMiningHistoryRetentionHours;
-    }
-
-    /**
-     * @return whether Oracle is using RAC
-     */
-    public Boolean isRacSystem() {
-        return !racNodes.isEmpty();
-    }
-
-    /**
-     * @return set of node hosts or ip addresses used in Oracle RAC
-     */
-    public Set<String> getRacNodes() {
-        return racNodes;
-    }
-
-    /**
-     * @return String token to replace
-     */
-    public String getTokenToReplaceInSnapshotPredicate() {
-        return snapshotEnhancementToken;
-    }
-
-    /**
-     * @return whether continuous log mining is enabled
-     */
-    public boolean isContinuousMining() {
-        return logMiningContinuousMine;
-    }
-
-    /**
-     * @return the duration that archive logs are scanned for log mining
-     */
-    public Duration getLogMiningArchiveLogRetention() {
-        return logMiningArchiveLogRetention;
-    }
-
-    /**
-     * @return int The minimum SCN interval used when mining redo/archive logs
-     */
-    public int getLogMiningBatchSizeMin() {
-        return logMiningBatchSizeMin;
-    }
-
-    /**
-     * @return int Number of actual records that will be fetched from the log mining contents view
-     */
-    public int getLogMiningViewFetchSize() {
-        return logMiningViewFetchSize;
-    }
-
-    /**
-     * @return int The maximum SCN interval used when mining redo/archive logs
-     */
-    public int getLogMiningBatchSizeMax() {
-        return logMiningBatchSizeMax;
-    }
-
-    /**
-     * @return int The default SCN interval used when mining redo/archive logs
-     */
-    public int getLogMiningBatchSizeDefault() {
-        return logMiningBatchSizeDefault;
-    }
-
-    /**
-     * @return int The minimum sleep time used when mining redo/archive logs
-     */
-    public Duration getLogMiningSleepTimeMin() {
-        return logMiningSleepTimeMin;
-    }
-
-    /**
-     * @return int The maximum sleep time used when mining redo/archive logs
-     */
-    public Duration getLogMiningSleepTimeMax() {
-        return logMiningSleepTimeMax;
-    }
-
-    /**
-     * @return int The default sleep time used when mining redo/archive logs
-     */
-    public Duration getLogMiningSleepTimeDefault() {
-        return logMiningSleepTimeDefault;
-    }
-
-    /**
-     * @return int The increment in sleep time when doing auto-tuning while mining redo/archive logs
-     */
-    public Duration getLogMiningSleepTimeIncrement() {
-        return logMiningSleepTimeIncrement;
-    }
-
-    /**
-     * @return the duration for which long running transactions are permitted in the transaction buffer between log switches
-     */
-    public Duration getLogMiningTransactionRetention() {
-        return logMiningTransactionRetention;
-    }
-
-    public long getAutoCommitTimeoutMs() {
-        return this.autoCommitTimeout;
-    }
-
-    /**
-     * @return the log mining parser implementation to be used
-     */
-    public LogMiningDmlParser getLogMiningDmlParser() {
-        return dmlParser;
-    }
-
-    public Configuration jdbcConfig() {
-        return jdbcConfig;
-    }
-
-    @Override
-    public String getConnectorName() {
-        return Module.name();
-    }
-
     private static boolean isBufferedLogMiner(Configuration config) {
         return ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)));
-    }
-    public boolean isLogMiningBufferDropOnStop() {
-        return logMiningBufferDropOnStop;
-    }
-
-    public enum IntervalHandlingMode implements EnumeratedValue {
-
-        /**
-         * Represents interval as inexact microseconds count
-         */
-        NUMERIC("numeric"),
-
-        /**
-         * Represents interval as ISO 8601 time interval
-         */
-        STRING("string");
-
-        private final String value;
-
-        IntervalHandlingMode(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        /**
-         * Convert mode name into the logical value
-         *
-         * @param value the configuration property value ; may not be null
-         * @return the matching option, or null if the match is not found
-         */
-        public static IntervalHandlingMode parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (IntervalHandlingMode option : IntervalHandlingMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-            return null;
-        }
-
-        /**
-         * Convert mode name into the logical value
-         *
-         * @param value        the configuration property value ; may not be null
-         * @param defaultValue the default value ; may be null
-         * @return the matching option or null if the match is not found and non-null default is invalid
-         */
-        public static IntervalHandlingMode parse(String value, String defaultValue) {
-            IntervalHandlingMode mode = parse(value);
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-            return mode;
-        }
-    }
-
-    public enum SnapshotLockingMode implements EnumeratedValue {
-        /**
-         * This mode will allow concurrent access to the table during the snapshot but prevents any
-         * session from acquiring any table-level exclusive lock.
-         */
-        SHARED("shared"),
-
-        /**
-         * This mode will avoid using ANY table locks during the snapshot process.
-         * This mode should be used carefully only when no schema changes are to occur.
-         */
-        NONE("none"),
-
-        /**
-         * Inject a custom mode, which allows for more control over snapshot locking.
-         */
-        CUSTOM("custom");
-
-        private final String value;
-
-        SnapshotLockingMode(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        public boolean usesLocking() {
-            return !value.equals(NONE.value);
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be {@code null}
-         * @return the matching option, or null if no match is found
-         */
-        public static SnapshotLockingMode parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (SnapshotLockingMode option : SnapshotLockingMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-            return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value        the configuration property value; may not be {@code null}
-         * @param defaultValue the default value; may be {@code null}
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static SnapshotLockingMode parse(String value, String defaultValue) {
-            SnapshotLockingMode mode = parse(value);
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-            return mode;
-        }
-    }
-
-    public enum LogMiningBufferType implements EnumeratedValue {
-        MEMORY("memory"),
-        INFINISPAN_EMBEDDED("infinispan_embedded"),
-        INFINISPAN_REMOTE("infinispan_remote"),
-        EHCACHE("ehcache");
-
-        private final String value;
-
-        LogMiningBufferType(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        public boolean isInfinispan() {
-            return INFINISPAN_EMBEDDED.equals(this) || INFINISPAN_REMOTE.equals(this);
-        }
-
-        public boolean isInfinispanEmbedded() {
-            return INFINISPAN_EMBEDDED.equals(this);
-        }
-
-        public boolean isEhcache() {
-            return EHCACHE.equals(this);
-        }
-
-        public static LogMiningBufferType parse(String value) {
-            if (value == null) {
-                return null;
-            }
-
-            for (LogMiningBufferType option : LogMiningBufferType.values()) {
-                if (option.getValue().equalsIgnoreCase(value.trim())) {
-                    return option;
-                }
-            }
-
-            return null;
-        }
-
-        public static LogMiningBufferType parseWithDefaultFallback(String value) {
-            return parseOrDefault(value, (String) LOG_MINING_BUFFER_TYPE.defaultValue());
-        }
-
-        private static LogMiningBufferType parseOrDefault(String value, String defaultValue) {
-            LogMiningBufferType bufferType = parse(value);
-
-            if (bufferType == null && defaultValue != null) {
-                return parse(defaultValue);
-            }
-
-            return bufferType;
-        }
-
-    }
-
-    public enum LogMiningQueryFilterMode implements EnumeratedValue {
-        /**
-         * This filter mode does not add any predicates to the LogMiner query, all filtering of
-         * change data is done at runtime in the connector's Java code. This is the default
-         * mode.
-         */
-        NONE("none"),
-
-        /**
-         * This filter mode adds predicates to the LogMiner query, using standard SQL in-clause
-         * semantics. This mode expects that the include/exclude connector properties specify
-         * schemas and tables without regular expressions.
-         *
-         * This option may be the best performing option when there is substantially more data in
-         * the redo logs compared to the data wanting to be captured at the trade-off that the
-         * connector configuration is a bit more verbose with include/exclude filters.
-         */
-        IN("in"),
-
-        /**
-         * This filter mode adds predicates to the LogMiner query, using the Oracle REGEXP_LIKE
-         * operator. This mode supports the include/exclude connector properties specifying
-         * regular expressions.
-         *
-         * For the best performance, it's generally a good idea to limit the number of REGEXP_LIKE
-         * operators in the query as it's treated similar to the LIKE operator which often does
-         * not perform well on large data sets. The number of REGEXP_LIKE operators can be reduced
-         * by specifying complex regular expressions where a single expression can potentially
-         * match multiple schemas or tables.
-         */
-        REGEX("regex");
-
-        private final String value;
-
-        LogMiningQueryFilterMode(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static LogMiningQueryFilterMode parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (LogMiningQueryFilterMode mode : LogMiningQueryFilterMode.values()) {
-                if (mode.getValue().equalsIgnoreCase(value)) {
-                    return mode;
-                }
-            }
-            return null;
-        }
-    }
-
-    public enum TransactionSnapshotBoundaryMode implements EnumeratedValue {
-        /**
-         * Specifies that the in-progress transaction support at the snapshot boundary should be
-         * skipped and that only transactions committed prior to the snapshot SCN and those that
-         * are started after the snapshot SCN will be captured.
-         */
-        SKIP("skip"),
-
-        /**
-         * Specifies that in-progress transactions that are available in the {@code V$TRANSACTION}
-         * table will be captured and emitted when streaming begins. If a transaction is not in
-         * this view, and its changes were not captured by Oracle Flashback query based on the
-         * snapshot SCN, that transaction will not be captured.
-         */
-        TRANSACTION_VIEW_ONLY("transaction_view_only"),
-
-        /**
-         * Specifies that in-progress transactions identified in the {@code V$TRANSACTION} table as
-         * well as any in-progress transactions as of the current SCN that may have been committed
-         * immediately prior to or at the snapshot SCN will be captured. This is done by starting a
-         * special LogMiner session to gather these transactions prior to starting the snapshot.
-         */
-        ALL("all");
-
-        private final String value;
-
-        TransactionSnapshotBoundaryMode(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be {@code null}
-         * @return the matching option, or null if no match is found
-         */
-        public static TransactionSnapshotBoundaryMode parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (TransactionSnapshotBoundaryMode option : TransactionSnapshotBoundaryMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-            return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be {@code null}
-         * @param defaultValue the default value; may be {@code null}
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static TransactionSnapshotBoundaryMode parse(String value, String defaultValue) {
-            TransactionSnapshotBoundaryMode mode = parse(value);
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-            return mode;
-        }
-    }
-    
-    /**
-     * The set of predefined SnapshotMode options or aliases.
-     */
-    public enum SnapshotMode
-            implements EnumeratedValue {
-        /**
-         * Perform a snapshot of data and schema upon initial startup of a connector.
-         */
-        INITIAL("initial", true),
-
-        /**
-         * Perform a snapshot of the schema but no data upon initial startup of a connector.
-         */
-        SCHEMA_ONLY("schema_only", false);
-
-        private final String value;
-        private final boolean includeData;
-
-        SnapshotMode(String value, boolean includeData) {
-            this.value = value;
-            this.includeData = includeData;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static SnapshotMode parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-
-            for (SnapshotMode option : SnapshotMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-
-            return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value        the configuration property value; may not be null
-         * @param defaultValue the default value; may be null
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static SnapshotMode parse(String value, String defaultValue) {
-            SnapshotMode mode = parse(value);
-
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-
-            return mode;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        /**
-         * Whether this snapshotting mode should include the actual data or just the
-         * schema of captured tables.
-         */
-        public boolean includeData() {
-            return includeData;
-        }
-    }
-
-    public enum ConnectorAdapter implements EnumeratedValue {
-        /**
-         * This is based on XStream API.
-         */
-        XSTREAM("XStream") {
-            @Override
-            public String getConnectionUrl() {
-                return "jdbc:oracle:oci:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
-            }
-
-            @Override
-            public StreamingAdapter getInstance(DamengConnectorConfig connectorConfig) {
-                return Instantiator.getInstanceWithProvidedConstructorType(
-                        "io.debezium.connector.dameng.xstream.XStreamAdapter",
-                        DamengConnectorConfig.class,
-                        connectorConfig);
-            }
-        },
-
-        /**
-         * This is based on LogMiner utility.
-         */
-        LOG_MINER("LogMiner") {
-            @Override
-            public String getConnectionUrl() {
-                return "jdbc:oracle:thin:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
-            }
-
-            @Override
-            public StreamingAdapter getInstance(DamengConnectorConfig connectorConfig) {
-                return Instantiator.getInstanceWithProvidedConstructorType(
-                        "io.debezium.connector.daameng.logminer.buffered.BufferedLogMinerAdapter",
-                        DamengConnectorConfig.class,
-                        connectorConfig);
-            }
-        },
-
-        LOG_MINER_UNBUFFERED("LogMiner_Unbuffered") {
-            @Override
-            public String getConnectionUrl() {
-                return "jdbc:oracle:thin:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
-            }
-
-            @Override
-            public StreamingAdapter getInstance(DamengConnectorConfig connectorConfig) {
-                return Instantiator.getInstanceWithProvidedConstructorType(
-                        "io.debezium.connector.dameng.logminer.unbuffered.UnbufferedLogMinerAdapter",
-                        DamengConnectorConfig.class,
-                        connectorConfig);
-            }
-        },
-
-        /**
-         * This is based on OpenLogReplicator project.
-         */
-        OLR("OLR") {
-            @Override
-            public String getConnectionUrl() {
-                return "jdbc:oracle:thin:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
-            }
-
-            @Override
-            public StreamingAdapter getInstance(DamengConnectorConfig connectorConfig) {
-                return Instantiator.getInstanceWithProvidedConstructorType(
-                        "io.debezium.connector.dameng.olr.OpenLogReplicatorAdapter",
-                        DamengConnectorConfig.class,
-                        connectorConfig);
-            }
-        };
-        
-        
-
-        private final String value;
-
-        ConnectorAdapter(String value) {
-            this.value = value;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static ConnectorAdapter parse(String value) {
-            if (value == null) {
-                return ConnectorAdapter.LOG_MINER;
-            }
-            value = value.trim();
-            for (ConnectorAdapter adapter : ConnectorAdapter.values()) {
-                if (adapter.getValue().equalsIgnoreCase(value)) {
-                    return adapter;
-                }
-            }
-            return null;
-        }
-
-        public static ConnectorAdapter parse(String value, String defaultValue) {
-            ConnectorAdapter mode = parse(value);
-
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-
-            return mode;
-        }
-
-        public abstract String getConnectionUrl();
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        public abstract StreamingAdapter getInstance(DamengConnectorConfig connectorConfig);
-    }
-
-    public enum LogMiningStrategy
-            implements EnumeratedValue {
-        /**
-         * This strategy uses LogMiner with data dictionary in online catalog.
-         * This option will not capture DDL , but acts fast on REDO LOG switch events
-         * This option does not use CONTINUOUS_MINE option
-         */
-        ONLINE_CATALOG("online_catalog"),
-
-        /**
-         * This strategy uses LogMiner with data dictionary in REDO LOG files.
-         * This option will capture DDL, but will develop some lag on REDO LOG switch event and will eventually catch up
-         * This option does not use CONTINUOUS_MINE option
-         * This is default value
-         */
-        CATALOG_IN_REDO("redo_log_catalog"),
-
-        /**
-         * This strategy uses LogMiner with data dictionary located in ORACLE read-only server.
-         * This option need the path location of the dictionary file.
-         * This option is a combination with the {@code redo_log_catalog} strategy.
-         */
-        DICTIONARY_FROM_FILE("dictionary_from_file"),
-
-        /**
-         * This strategy combines the performance of {@code online_catalog} with the schema capture capabilities of
-         * the {@code redo_log_catalog} strategy. If LogMiner fails to reconstruct a DML event, this strategy will
-         * default to using Debezium's schema metadata to reconstruct the DML in-flight when LogMiner cannot.
-         */
-        HYBRID("hybrid");;
-
-        private final String value;
-
-        LogMiningStrategy(String value) {
-            this.value = value;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static LogMiningStrategy parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (LogMiningStrategy adapter : LogMiningStrategy.values()) {
-                if (adapter.getValue().equalsIgnoreCase(value)) {
-                    return adapter;
-                }
-            }
-            return null;
-        }
-
-        public static LogMiningStrategy parse(String value, String defaultValue) {
-            LogMiningStrategy mode = parse(value);
-
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-
-            return mode;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-    }
-
-    public enum LogMiningDmlParser
-            implements EnumeratedValue {
-        LEGACY("legacy"),
-        FAST("fast");
-
-        private final String value;
-
-        LogMiningDmlParser(String value) {
-            this.value = value;
-        }
-
-        public static LogMiningDmlParser parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (LogMiningDmlParser parser : LogMiningDmlParser.values()) {
-                if (parser.getValue().equalsIgnoreCase(value)) {
-                    return parser;
-                }
-            }
-            return null;
-        }
-
-        public static LogMiningDmlParser parse(String value, String defaultValue) {
-            LogMiningDmlParser mode = parse(value);
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-            return mode;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-    }
-
-    /**
-     * A {@link TableFilter} that excludes all Oracle system tables.
-     *
-     * @author Gunnar Morling
-     */
-    private static class SystemTablesPredicate
-            implements TableFilter {
-        private final Configuration config;
-
-        SystemTablesPredicate(Configuration config) {
-            this.config = config;
-        }
-
-        @Override
-        public boolean isIncluded(TableId t) {
-            return !isExcludedSchema(t) && !isFlushTable(t);
-        }
-
-        private boolean isExcludedSchema(TableId id) {
-            return EXCLUDED_SCHEMAS.contains(id.schema().toLowerCase());
-        }
-
-        private boolean isFlushTable(TableId id) {
-            final String schema = config.getString(USER);
-            return id.table().equalsIgnoreCase(SqlUtils.LOGMNR_FLUSH_TABLE) && id.schema().equalsIgnoreCase(schema);
-        }
     }
 
     private static boolean isUnbufferedLogMiner(Configuration config) {
         return ConnectorAdapter.LOG_MINER_UNBUFFERED.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)));
     }
-    
+
     private static boolean isLogMiner(Configuration config) {
         return isBufferedLogMiner(config) || isUnbufferedLogMiner(config);
     }

@@ -5,8 +5,8 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.infinispan.marshalling;
 
-import io.debezium.connector.oracle.OracleValueConverters;
-import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
+import org.devlive.connector.dameng.DamengValueConverters;
+import org.devlive.connector.dameng.logminer.parser.LogMinerDmlEntryImpl;
 import org.infinispan.protostream.annotations.ProtoAdapter;
 import org.infinispan.protostream.annotations.ProtoFactory;
 import org.infinispan.protostream.annotations.ProtoField;
@@ -43,7 +43,7 @@ public class LogMinerDmlEntryImplAdapter {
     private static final String NULL_VALUE_SENTINEL = "$$DBZ-NULL$$";
 
     /**
-     * The supplied value arrays can now be populated with {@link OracleValueConverters#UNAVAILABLE_VALUE}
+     * The supplied value arrays can now be populated with {@link DamengValueConverters#UNAVAILABLE_VALUE}
      * which is simple java object.  This cannot be represented as a string in the cached Infinispan record
      * and so this sentinel is used to translate the runtime object representation to a serializable form
      * and back during cache to object conversion.
@@ -128,7 +128,7 @@ public class LogMinerDmlEntryImplAdapter {
      * Converts the provided object-array to a string-array.
      *
      * Internally this method examines the supplied object array and handles conversion for {@literal null}
-     * and {@link OracleValueConverters#UNAVAILABLE_VALUE} values so that they can be serialized.
+     * and {@link DamengValueConverters#UNAVAILABLE_VALUE} values so that they can be serialized.
      *
      * @param values the values array to be converted, should never be {@code null}
      * @return the values array converted to a string-array
@@ -139,7 +139,7 @@ public class LogMinerDmlEntryImplAdapter {
             if (values[i] == null) {
                 results[i] = NULL_VALUE_SENTINEL;
             }
-            else if (values[i] == OracleValueConverters.UNAVAILABLE_VALUE) {
+            else if (values[i] == DamengValueConverters.UNAVAILABLE_VALUE) {
                 results[i] = UNAVAILABLE_VALUE_SENTINEL;
             }
             else {
@@ -155,7 +155,7 @@ public class LogMinerDmlEntryImplAdapter {
      * Internally this method examines the supplied string array and handles the conversion of specific
      * sentinel values back to their runtime equivalents.  For example, {@link #NULL_VALUE_SENTINEL}
      * will be interpreted as {@literal null} and {@link #UNAVAILABLE_VALUE_SENTINEL} will be converted
-     * back to {@link OracleValueConverters#UNAVAILABLE_VALUE}.
+     * back to {@link DamengValueConverters#UNAVAILABLE_VALUE}.
      *
      * @param values the values array to eb converted, should never be {@code null}
      * @return the values array converted to an object-array
@@ -167,7 +167,7 @@ public class LogMinerDmlEntryImplAdapter {
                 results[i] = null;
             }
             else if (results[i].equals(UNAVAILABLE_VALUE_SENTINEL)) {
-                results[i] = OracleValueConverters.UNAVAILABLE_VALUE;
+                results[i] = DamengValueConverters.UNAVAILABLE_VALUE;
             }
         }
         return results;

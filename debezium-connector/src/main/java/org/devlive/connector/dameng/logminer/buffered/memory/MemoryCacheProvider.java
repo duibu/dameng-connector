@@ -5,10 +5,10 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.memory;
 
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.logminer.buffered.AbstractCacheProvider;
-import io.debezium.connector.oracle.logminer.buffered.LogMinerCache;
-import io.debezium.connector.oracle.logminer.buffered.LogMinerTransactionCache;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.logminer.buffered.AbstractCacheProvider;
+import org.devlive.connector.dameng.logminer.buffered.LogMinerCache;
+import org.devlive.connector.dameng.logminer.buffered.LogMinerTransactionCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +26,7 @@ public class MemoryCacheProvider extends AbstractCacheProvider<MemoryTransaction
     private final MemoryBasedLogMinerCache<String, String> processedTransactionsCache;
     private final MemoryBasedLogMinerCache<String, String> schemaChangesCache;
 
-    public MemoryCacheProvider(OracleConnectorConfig connectorConfig) {
+    public MemoryCacheProvider(DamengConnectorConfig connectorConfig) {
         LOGGER.info("Using Java heap to buffer transactions");
 
         this.transactionCache = new MemoryLogMinerTransactionCache();

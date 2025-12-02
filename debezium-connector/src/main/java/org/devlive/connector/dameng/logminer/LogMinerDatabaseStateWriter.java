@@ -5,7 +5,7 @@
  */
 package org.devlive.connector.dameng.logminer;
 
-import io.debezium.connector.oracle.OracleConnection;
+import org.devlive.connector.dameng.DamengConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Utility class that can write the contents of several Oracle LogMiner tables to the
+ * Utility class that can write the contents of several Dameng LogMiner tables to the
  * connector's log if and only if DEBUG logging is enabled.
  *
  * @author Chris Cranford
@@ -23,7 +23,7 @@ public class LogMinerDatabaseStateWriter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerDatabaseStateWriter.class);
 
-    public static void write(OracleConnection connection) {
+    public static void write(DamengConnection connection) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Configured redo logs are:");
             try {
@@ -56,7 +56,7 @@ public class LogMinerDatabaseStateWriter {
         }
     }
 
-    public static void writeLogMinerStartParameters(OracleConnection connection) {
+    public static void writeLogMinerStartParameters(DamengConnection connection) {
         final String query = "SELECT START_SCN, END_SCN, REQUIRED_START_SCN, OPTIONS, STATUS, INFO " +
                 "FROM V$LOGMNR_PARAMETERS";
         try {
@@ -82,7 +82,7 @@ public class LogMinerDatabaseStateWriter {
         }
     }
 
-    public static void writeLogMinerLogFailures(OracleConnection connection) {
+    public static void writeLogMinerLogFailures(DamengConnection connection) {
         // Query fetches all logs that had problems when LogMiner started.
         final String query = "SELECT FILENAME, THREAD_ID, THREAD_SQN, LOW_SCN, NEXT_SCN, DICTIONARY_BEGIN, " +
                 "DICTIONARY_END, TYPE, INFO FROM V$LOGMNR_LOGS ORDER BY THREAD_ID, THREAD_SQN";
@@ -132,7 +132,7 @@ public class LogMinerDatabaseStateWriter {
      * @param query the query to execute
      * @throws SQLException thrown if an exception occurs performing a SQL operation
      */
-    private static void logQueryResults(OracleConnection connection, String query) throws SQLException {
+    private static void logQueryResults(DamengConnection connection, String query) throws SQLException {
         connection.query(query, rs -> {
             int columns = rs.getMetaData().getColumnCount();
             List<String> columnNames = new ArrayList<>();

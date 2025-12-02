@@ -5,12 +5,11 @@
  */
 package org.devlive.connector.dameng.olr;
 
-import io.debezium.connector.oracle.*;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.util.Clock;
-import oracle.jdbc.internal.OracleTypes;
+import org.devlive.connector.dameng.*;
 
 import java.sql.Connection;
 
@@ -27,10 +26,10 @@ public class OpenLogReplicatorChangeRecordEmitter extends BaseChangeRecordEmitte
 
     private final Operation operation;
 
-    public OpenLogReplicatorChangeRecordEmitter(OracleConnectorConfig connectorConfig, OraclePartition partition,
-                                                OracleOffsetContext offsetContext, Operation operation,
+    public OpenLogReplicatorChangeRecordEmitter(DamengConnectorConfig connectorConfig, DamengPartition partition,
+                                                DamengOffsetContext offsetContext, Operation operation,
                                                 Object[] oldValues, Object[] newValues,
-                                                Table table, OracleDatabaseSchema schema, Clock clock) {
+                                                Table table, DamengDatabaseSchema schema, Clock clock) {
         super(connectorConfig, partition, offsetContext, schema, table, clock, oldValues, newValues);
         this.operation = operation;
     }
@@ -43,20 +42,20 @@ public class OpenLogReplicatorChangeRecordEmitter extends BaseChangeRecordEmitte
     @Override
     protected Object convertReselectPrimaryKeyColumn(Connection connection, Column column, Object value) {
         switch (column.jdbcType()) {
-            case OracleTypes.TIMESTAMP:
-            case OracleTypes.DATE:
+            case DamengTypes.TIMESTAMP:
+            case DamengTypes.DATE:
                 if (value instanceof Number) {
                     // OpenLogReplicator should be configured to provide values in nanoseconds precision.
                     value = convertValueViaQuery(connection, String.format(EPOCH_NANO, value));
                 }
                 break;
-            case OracleTypes.INTERVALDS:
+            case DamengTypes.INTERVALDS:
                 if (value instanceof String) {
                     // OpenLogReplicator provides this as an TO_DSINTERVAL constructor argument string.
                     value = convertValueViaQuery(connection, String.format(TO_DSINTERVAL, ((String) value).replace(",", " ")));
                 }
                 break;
-            case OracleTypes.INTERVALYM:
+            case DamengTypes.INTERVALYM:
                 if (value instanceof String) {
                     value = convertValueViaQuery(connection, String.format(TO_YMINTERVAL, value));
                 }

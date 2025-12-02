@@ -6,16 +6,6 @@
 package org.devlive.connector.dameng.olr;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.oracle.*;
-import io.debezium.connector.oracle.OracleConnection.NonRelationalTableException;
-import io.debezium.connector.oracle.olr.client.OlrNetworkClient;
-import io.debezium.connector.oracle.olr.client.PayloadEvent;
-import io.debezium.connector.oracle.olr.client.PayloadEvent.Type;
-import io.debezium.connector.oracle.olr.client.StreamingEvent;
-import io.debezium.connector.oracle.olr.client.payloads.AbstractMutationEvent;
-import io.debezium.connector.oracle.olr.client.payloads.PayloadSchema;
-import io.debezium.connector.oracle.olr.client.payloads.SchemaChangeEvent;
-import io.debezium.connector.oracle.olr.client.payloads.Values;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -27,6 +17,15 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
+import org.devlive.connector.dameng.*;
+import org.devlive.connector.dameng.olr.client.OlrNetworkClient;
+import org.devlive.connector.dameng.olr.client.PayloadEvent;
+import org.devlive.connector.dameng.olr.client.PayloadEvent.*;
+import org.devlive.connector.dameng.olr.client.StreamingEvent;
+import org.devlive.connector.dameng.olr.client.payloads.AbstractMutationEvent;
+import org.devlive.connector.dameng.olr.client.payloads.PayloadSchema;
+import org.devlive.connector.dameng.olr.client.payloads.SchemaChangeEvent;
+import org.devlive.connector.dameng.olr.client.payloads.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,30 +40,30 @@ import java.util.Optional;
  *
  * @author Chris Cranford
  */
-public class OpenLogReplicatorStreamingChangeEventSource implements StreamingChangeEventSource<OraclePartition, OracleOffsetContext> {
+public class OpenLogReplicatorStreamingChangeEventSource implements StreamingChangeEventSource<DamengPartition, DamengOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenLogReplicatorStreamingChangeEventSource.class);
 
-    private final OracleConnectorConfig connectorConfig;
-    private final OracleConnection jdbcConnection;
-    private final EventDispatcher<OraclePartition, TableId> dispatcher;
+    private final DamengConnectorConfig connectorConfig;
+    private final DamengConnection jdbcConnection;
+    private final EventDispatcher<DamengPartition, TableId> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
-    private final OracleDatabaseSchema schema;
+    private final DamengDatabaseSchema schema;
     private final OpenLogReplicatorStreamingChangeEventSourceMetrics streamingMetrics;
     private final SnapshotterService snapshotterService;
 
     private OlrNetworkClient client;
-    private OraclePartition partition;
-    private OracleOffsetContext offsetContext;
+    private DamengPartition partition;
+    private DamengOffsetContext offsetContext;
     private boolean transactionEvents = false;
     private Scn lastCheckpointScn = Scn.NULL;
     private long lastCheckpointIndex;
 
-    public OpenLogReplicatorStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection connection,
-                                                       EventDispatcher<OraclePartition, TableId> dispatcher,
+    public OpenLogReplicatorStreamingChangeEventSource(DamengConnectorConfig connectorConfig, DamengConnection connection,
+                                                       EventDispatcher<DamengPartition, TableId> dispatcher,
                                                        ErrorHandler errorHandler, Clock clock,
-                                                       OracleDatabaseSchema schema,
+                                                       DamengDatabaseSchema schema,
                                                        OpenLogReplicatorStreamingChangeEventSourceMetrics streamingMetrics, SnapshotterService snapshotterService) {
         this.connectorConfig = connectorConfig;
         this.dispatcher = dispatcher;
@@ -77,24 +76,24 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     }
 
     @Override
-    public void init(OracleOffsetContext offsetContext) throws InterruptedException {
+    public void init(DamengOffsetContext offsetContext) throws InterruptedException {
         this.offsetContext = offsetContext == null ? emptyContext() : offsetContext;
     }
 
     @Override
-    public OracleOffsetContext getOffsetContext() {
+    public DamengOffsetContext getOffsetContext() {
         return this.offsetContext;
     }
 
-    private OracleOffsetContext emptyContext() {
-        return OracleOffsetContext.create().logicalName(connectorConfig)
+    private DamengOffsetContext emptyContext() {
+        return DamengOffsetContext.create().logicalName(connectorConfig)
                 .snapshotPendingTransactions(Collections.emptyMap())
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>()).build();
     }
 
     @Override
-    public void execute(ChangeEventSourceContext context, OraclePartition partition, OracleOffsetContext offsetContext) throws InterruptedException {
+    public void execute(ChangeEventSourceContext context, DamengPartition partition, DamengOffsetContext offsetContext) throws InterruptedException {
 
         try {
             this.partition = partition;
@@ -245,7 +244,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     }
 
     private void onMutationEvent(StreamingEvent event, AbstractMutationEvent mutationEvent) throws Exception {
-        final Type eventType = mutationEvent.getType();
+        final PayloadEvent.Type eventType = mutationEvent.getType();
         final TableId tableId = mutationEvent.getSchema().getTableId(event.getDatabaseName());
         if (!connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
             return;
@@ -355,7 +354,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                 partition,
                 offsetContext,
                 tableId,
-                new OracleSchemaChangeEventEmitter(
+                new DamengSchemaChangeEventEmitter(
                         connectorConfig,
                         partition,
                         offsetContext,
@@ -411,7 +410,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         try {
             tableDdl = jdbcConnection.getTableMetadataDdl(tableId);
         }
-        catch (NonRelationalTableException e) {
+        catch (DamengConnection.NonRelationalTableException e) {
             LOGGER.warn("{} The event will be skipped.", e.getMessage());
             streamingMetrics.incrementWarningCount();
             return Optional.empty();
@@ -421,7 +420,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                 partition,
                 offsetContext,
                 tableId,
-                new OracleSchemaChangeEventEmitter(
+                new DamengSchemaChangeEventEmitter(
                         connectorConfig,
                         partition,
                         offsetContext,
@@ -489,8 +488,8 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     }
 
     private Object resolveColumnValue(TableId tableId, Column column, Values values) {
-        Object value = values.getValues().getOrDefault(column.name(), OracleValueConverters.UNAVAILABLE_VALUE);
-        if (value == OracleValueConverters.UNAVAILABLE_VALUE) {
+        Object value = values.getValues().getOrDefault(column.name(), DamengValueConverters.UNAVAILABLE_VALUE);
+        if (value == DamengValueConverters.UNAVAILABLE_VALUE) {
             // If the get returned the unavailable value, the key does not exist.
             // If the column is LOB, return the unavailable value marker.
             // If the column is not an LOB, return null

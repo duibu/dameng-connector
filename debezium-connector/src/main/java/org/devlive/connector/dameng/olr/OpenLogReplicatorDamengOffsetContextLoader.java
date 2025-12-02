@@ -5,13 +5,13 @@
  */
 package org.devlive.connector.dameng.olr;
 
-import io.debezium.connector.oracle.CommitScn;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleOffsetContext;
-import io.debezium.connector.oracle.SourceInfo;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
+import org.devlive.connector.dameng.CommitScn;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.DamengOffsetContext;
+import org.devlive.connector.dameng.SourceInfo;
 
 import java.util.Map;
 
@@ -20,19 +20,19 @@ import java.util.Map;
  *
  * @author Chris Cranford
  */
-public class OpenLogReplicatorDamengOffsetContextLoader implements OffsetContext.Loader<OracleOffsetContext> {
+public class OpenLogReplicatorDamengOffsetContextLoader implements OffsetContext.Loader<DamengOffsetContext> {
 
-    private final OracleConnectorConfig connectorConfig;
+    private final DamengConnectorConfig connectorConfig;
 
-    public OpenLogReplicatorDamengOffsetContextLoader(OracleConnectorConfig connectorConfig) {
+    public OpenLogReplicatorDamengOffsetContextLoader(DamengConnectorConfig connectorConfig) {
         this.connectorConfig = connectorConfig;
     }
 
     @Override
-    public OracleOffsetContext load(Map<String, ?> offset) {
-        return OracleOffsetContext.create()
+    public DamengOffsetContext load(Map<String, ?> offset) {
+        return DamengOffsetContext.create()
                 .logicalName(connectorConfig)
-                .scn(OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY))
+                .scn(DamengOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY))
                 .scnIndex((Long) offset.get(SourceInfo.SCN_INDEX_KEY))
                 .commitScn(CommitScn.empty())
                 .snapshot(loadSnapshot(offset).orElse(null))

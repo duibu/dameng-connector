@@ -7,14 +7,14 @@ package org.devlive.connector.dameng.logminer.logwriter;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.OracleConnection;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
+import org.devlive.connector.dameng.DamengConnection;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.Scn;
+import org.devlive.connector.dameng.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,13 +27,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * A {@link LogWriterFlushStrategy} for Oracle RAC that performs a transaction-scoped commit
- * to flush the Oracle LogWriter (LGWR) process on each RAC node.
+ * A {@link LogWriterFlushStrategy} for Dameng RAC that performs a transaction-scoped commit
+ * to flush the Dameng LogWriter (LGWR) process on each RAC node.
  *
  * This strategy builds atop of {@link CommitLogWriterFlushStrategy} by creating a commit strategy
- * to each Oracle RAC node and orchestrating the flushes simultaneously for each node when a flush
+ * to each Dameng RAC node and orchestrating the flushes simultaneously for each node when a flush
  * is needed.  In the event that a node fails to flush, this strategy will delay for 3 seconds to
- * allow Oracle to automatically flush the buffers before proceeding.
+ * allow Dameng to automatically flush the buffers before proceeding.
  *
  * @author Chris Cranford
  */
@@ -44,17 +44,17 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
     private final List<RacNode> racNodes = new ArrayList<>();
     private final LogMinerStreamingChangeEventSourceMetrics streamingMetrics;
     private final JdbcConfiguration jdbcConfiguration;
-    private final OracleConnectorConfig connectorConfig;
+    private final DamengConnectorConfig connectorConfig;
     private final Set<String> hosts;
 
     /**
-     * Creates an Oracle RAC LogWriter (LGWR) flushing strategy.
+     * Creates an Dameng RAC LogWriter (LGWR) flushing strategy.
      *
      * @param connectorConfig the connector configuration, must not be {@code null}
      * @param jdbcConfig the mining session JDBC connection configuration, must not be {@code null}
      * @param streamingMetrics the streaming metrics, must not be {@code null}
      */
-    public RacCommitLogWriterFlushStrategy(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig,
+    public RacCommitLogWriterFlushStrategy(DamengConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig,
                                            LogMinerStreamingChangeEventSourceMetrics streamingMetrics) {
         this.jdbcConfiguration = jdbcConfig;
         this.streamingMetrics = streamingMetrics;
@@ -78,7 +78,7 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
 
     @Override
     public void flush(Scn currentScn) throws InterruptedException {
-        // Oracle RAC has one LogWriter (LGWR) process per node (instance).
+        // Dameng RAC has one LogWriter (LGWR) process per node (instance).
         // For this configuration, all LGWR processes across all instances must be flushed.
         // Queries cannot be used such as gv_instance as not all nodes could be load balanced.
         Instant startTime = Instant.now();
@@ -114,7 +114,7 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
         }
 
         if (!allNodesFlushed) {
-            LOGGER.warn("Not all LGWR buffers were flushed, waiting 3 seconds for Oracle to flush automatically.");
+            LOGGER.warn("Not all LGWR buffers were flushed, waiting 3 seconds for Dameng to flush automatically.");
             Metronome metronome = Metronome.sleeper(Duration.ofSeconds(3), Clock.SYSTEM);
             try {
                 metronome.pause();
@@ -147,7 +147,7 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
     private class RacNode {
         private final String hostName;
 
-        private OracleConnection connection;
+        private DamengConnection connection;
         private LogWriterFlushStrategy flushStrategy;
 
         RacNode(String hostName) {
@@ -205,7 +205,7 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
 
             final JdbcConfiguration jdbcHostConfig = JdbcConfiguration.adapt(jdbcConfigBuilder.build());
 
-            this.connection = new OracleConnection(jdbcHostConfig);
+            this.connection = new DamengConnection(jdbcHostConfig);
             this.connection.setAutoCommit(false);
 
             LOGGER.info("Created flush connection to RAC node '{}'", hostName);
@@ -230,7 +230,7 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
                         this.flushStrategy = new CommitLogWriterFlushStrategy(connectorConfig, connection);
                     }
                 }
-                LOGGER.info("Successfully reconnected to Oracle RAC node '{}'", hostName);
+                LOGGER.info("Successfully reconnected to Dameng RAC node '{}'", hostName);
             }
             catch (Exception e) {
                 LOGGER.warn("Failed to reconnect to RAC node '{}': {}", hostName, e.getMessage());

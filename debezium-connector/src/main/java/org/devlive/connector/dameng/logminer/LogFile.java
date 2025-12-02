@@ -7,19 +7,29 @@ package org.devlive.connector.dameng.logminer;
 
 import org.devlive.connector.dameng.Scn;
 
+import java.math.BigInteger;
 import java.util.Objects;
+
 
 /**
  * Represents a redo or archive log in Oracle.
  *
  * @author Chris Cranford
  */
-public class LogFile
-{
+public class LogFile {
+
+    public enum Type {
+        ARCHIVE,
+        REDO
+    }
+
     private final String fileName;
     private final Scn firstScn;
     private final Scn nextScn;
+    private final BigInteger sequence;
     private final boolean current;
+    private final Type type;
+    private final int thread;
 
     /**
      * Create a log file that represents an archived log record.
@@ -27,10 +37,11 @@ public class LogFile
      * @param fileName the file name
      * @param firstScn the first system change number in the log
      * @param nextScn the first system change number in the following log
+     * @param sequence the unique log sequence number
+     * @param type the log type
      */
-    public LogFile(String fileName, Scn firstScn, Scn nextScn)
-    {
-        this(fileName, firstScn, nextScn, false);
+    public LogFile(String fileName, Scn firstScn, Scn nextScn, BigInteger sequence, Type type, int thread) {
+        this(fileName, firstScn, nextScn, sequence, type, false, thread);
     }
 
     /**
@@ -39,65 +50,90 @@ public class LogFile
      * @param fileName the file name
      * @param firstScn the first system change number in the log
      * @param nextScn the first system change number in the following log
+     * @param sequence the unique log sequence number
+     * @param type the type of archive log
      * @param current whether the log file is the current one
      */
-    public LogFile(String fileName, Scn firstScn, Scn nextScn, boolean current)
-    {
+    public LogFile(String fileName, Scn firstScn, Scn nextScn, BigInteger sequence, Type type, boolean current, int thread) {
         this.fileName = fileName;
         this.firstScn = firstScn;
         this.nextScn = nextScn;
+        this.sequence = sequence;
         this.current = current;
+        this.type = type;
+        this.thread = thread;
     }
 
-    public String getFileName()
-    {
+    public String getFileName() {
         return fileName;
     }
 
-    public Scn getFirstScn()
-    {
+    public Scn getFirstScn() {
         return firstScn;
     }
 
-    public Scn getNextScn()
-    {
+    public Scn getNextScn() {
         return isCurrent() ? Scn.MAX : nextScn;
+    }
+
+    public BigInteger getSequence() {
+        return sequence;
+    }
+
+    public int getThread() {
+        return thread;
     }
 
     /**
      * Returns whether this log file instance is considered the current online redo log record.
      */
-    public boolean isCurrent()
-    {
+    public boolean isCurrent() {
         return current;
     }
 
-    /**
-     * Returns whether the specified {@code other} log file has the same SCN range as this instance.
-     *
-     * @param other the other log file instance
-     * @return true if both have the same SCN range; otherwise false
-     */
-    public boolean isSameRange(LogFile other)
-    {
-        return Objects.equals(firstScn, other.getFirstScn()) && Objects.equals(nextScn, other.getNextScn());
+    public Type getType() {
+        return type;
+    }
+
+    public boolean isScnInLogFileRange(Scn scn) {
+        return getFirstScn().compareTo(scn) <= 0 && (getNextScn().compareTo(scn) > 0 || getNextScn().equals(Scn.MAX));
+    }
+
+    public boolean isArchive() {
+        return type == Type.ARCHIVE;
+    }
+
+    public boolean isRedo() {
+        return type == Type.REDO;
     }
 
     @Override
-    public int hashCode()
-    {
-        return Objects.hash(firstScn, nextScn);
+    public int hashCode() {
+        return Objects.hash(thread, sequence);
     }
 
     @Override
-    public boolean equals(Object obj)
-    {
+    public boolean equals(Object obj) {
         if (obj == this) {
             return true;
         }
         if (!(obj instanceof LogFile)) {
             return false;
         }
-        return isSameRange((LogFile) obj);
+        final LogFile other = (LogFile) obj;
+        return thread == other.thread && Objects.equals(sequence, other.sequence);
+    }
+
+    @Override
+    public String toString() {
+        return "LogFile{" +
+                "fileName='" + fileName + '\'' +
+                ", firstScn=" + firstScn +
+                ", nextScn=" + nextScn +
+                ", sequence=" + sequence +
+                ", current=" + current +
+                ", type=" + type +
+                ", thread=" + thread +
+                '}';
     }
 }

@@ -5,8 +5,8 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.infinispan.marshalling;
 
-import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.buffered.infinispan.InfinispanTransaction;
+import org.devlive.connector.dameng.Scn;
+import org.devlive.connector.dameng.logminer.buffered.infinispan.InfinispanTransaction;
 import org.infinispan.protostream.annotations.ProtoAdapter;
 import org.infinispan.protostream.annotations.ProtoFactory;
 import org.infinispan.protostream.annotations.ProtoField;

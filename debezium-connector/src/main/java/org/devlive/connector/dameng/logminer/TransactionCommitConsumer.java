@@ -6,15 +6,15 @@
 package org.devlive.connector.dameng.logminer;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleDatabaseSchema;
-import io.debezium.connector.oracle.OracleValueConverters;
-import io.debezium.connector.oracle.logminer.events.*;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.util.Strings;
 import oracle.sql.RAW;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.DamengDatabaseSchema;
+import org.devlive.connector.dameng.DamengValueConverters;
+import org.devlive.connector.dameng.logminer.event.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +27,7 @@ import java.util.function.Function;
  * merging events that should be merged when LOB support is enabled, and then delegating the final
  * stream of events to a delegate consumer.
  *
- * When a table has a LOB or XML field, Oracle LogMiner often supplies us with synthetic events that deal
+ * When a table has a LOB or XML field, Dameng LogMiner often supplies us with synthetic events that deal
  * with sub-tasks that occur in the database as a result of writing LOB data to the database.  We
  * would prefer to emit these synthetic events as a part of the overall logical event, whether that
  * is an insert or update.
@@ -35,7 +35,7 @@ import java.util.function.Function;
  * An example of a scenario would be the following logical user action:
  *      INSERT INTO my_table (id,lob_field) values (1, 'some clob data');
  *
- * Oracle LogMiner provides the connector with the following events:
+ * Dameng LogMiner provides the connector with the following events:
  *      INSERT INTO my_table (id,lob_field) values (1, EMPTY_CLOB());
  *      UPDATE my_table SET lob_field = 'some clob data' where id = 1;
  *
@@ -63,8 +63,8 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     private static final String CLOB_TYPE = "CLOB";
 
     private final Handler<LogMinerEvent> delegate;
-    private final OracleConnectorConfig connectorConfig;
-    private final OracleDatabaseSchema schema;
+    private final DamengConnectorConfig connectorConfig;
+    private final DamengDatabaseSchema schema;
     private final Map<String, RowState> rows = new HashMap<>();
     private final ConstructionDetails currentLobDetails = new ConstructionDetails();
     private final ConstructionDetails currentExtendedStringDetails = new ConstructionDetails();
@@ -73,7 +73,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     private long transactionIndex = 0;
     private int totalEvents = 0;
 
-    public TransactionCommitConsumer(Handler<LogMinerEvent> delegate, OracleConnectorConfig connectorConfig, OracleDatabaseSchema schema) {
+    public TransactionCommitConsumer(Handler<LogMinerEvent> delegate, DamengConnectorConfig connectorConfig, DamengDatabaseSchema schema) {
         this.delegate = delegate;
         this.connectorConfig = connectorConfig;
         this.schema = schema;
@@ -380,7 +380,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         Object[] intoVals = newValues(into);
         Object[] fromVals = newValues(from);
         for (int i = 0; i < intoVals.length; i++) {
-            if (!OracleValueConverters.UNAVAILABLE_VALUE.equals(fromVals[i])) {
+            if (!DamengValueConverters.UNAVAILABLE_VALUE.equals(fromVals[i])) {
                 LOGGER.trace("\t\tMerge column {}: replacing {} with {}.", i, intoVals[i], fromVals[i]);
                 intoVals[i] = fromVals[i];
             }
@@ -420,7 +420,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         // If the column is an LOB and its new value isn't the placeholder, we force a merge.
         for (int i = 0; i < newValues.length; ++i) {
             final Column column = table.columns().get(i);
-            if (isLobColumn(column) && !OracleValueConverters.UNAVAILABLE_VALUE.equals(newValues[i])) {
+            if (isLobColumn(column) && !DamengValueConverters.UNAVAILABLE_VALUE.equals(newValues[i])) {
                 LOGGER.trace("\tFor table {} which has an LOB column {}, merging.", event.getTableId(), column.name());
                 return true;
             }
@@ -597,8 +597,8 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         }
 
         private void initializeFromData(String data) {
-            this.binary = data.startsWith(OracleValueConverters.HEXTORAW_FUNCTION_START)
-                    && data.endsWith(OracleValueConverters.HEXTORAW_FUNCTION_END);
+            this.binary = data.startsWith(DamengValueConverters.HEXTORAW_FUNCTION_START)
+                    && data.endsWith(DamengValueConverters.HEXTORAW_FUNCTION_END);
             if (this.binary) {
                 try {
                     this.bytes = RAW.hexString2Bytes(data.substring(10, data.length() - 2));
@@ -807,9 +807,9 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             }
             if (end == 0) {
                 if (binary) {
-                    return OracleValueConverters.EMPTY_BLOB_FUNCTION;
+                    return DamengValueConverters.EMPTY_BLOB_FUNCTION;
                 }
-                return OracleValueConverters.EMPTY_CLOB_FUNCTION;
+                return DamengValueConverters.EMPTY_CLOB_FUNCTION;
             }
 
             if (binary) {
@@ -861,11 +861,11 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             if (value instanceof String) {
                 String strval = (String) value;
                 LobUnderConstruction lob = new LobUnderConstruction();
-                if (OracleValueConverters.EMPTY_BLOB_FUNCTION.equals(strval)) {
+                if (DamengValueConverters.EMPTY_BLOB_FUNCTION.equals(strval)) {
                     lob.binary = true;
                     lob.isNull = false; // lob must be emitted
                 }
-                else if (OracleValueConverters.EMPTY_CLOB_FUNCTION.equals(strval)) {
+                else if (DamengValueConverters.EMPTY_CLOB_FUNCTION.equals(strval)) {
                     lob.binary = false;
                     lob.isNull = false; // lob must be emitted
                 }
@@ -950,7 +950,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             if (value instanceof String) {
                 final String strval = (String) value;
                 ExtendedStringUnderConstruction lob = new ExtendedStringUnderConstruction();
-                if (!OracleValueConverters.EMPTY_EXTENDED_STRING.equals(strval)) {
+                if (!DamengValueConverters.EMPTY_EXTENDED_STRING.equals(strval)) {
                     lob.add(new ExtendedStringFragment((String) value));
                 }
                 return lob;

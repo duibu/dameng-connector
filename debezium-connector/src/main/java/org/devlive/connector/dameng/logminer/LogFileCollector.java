@@ -8,13 +8,13 @@ package org.devlive.connector.dameng.logminer;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.VisibleForTesting;
-import io.debezium.connector.oracle.OracleConnection;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.RedoThreadState;
-import io.debezium.connector.oracle.RedoThreadState.RedoThread;
-import io.debezium.connector.oracle.Scn;
 import io.debezium.util.DelayStrategy;
 import io.debezium.util.Strings;
+import org.devlive.connector.dameng.DamengConnection;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.RedoThreadState;
+import org.devlive.connector.dameng.RedoThreadState.*;
+import org.devlive.connector.dameng.Scn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,9 +46,9 @@ public class LogFileCollector {
     private final Duration archiveLogRetention;
     private final boolean archiveLogOnlyMode;
     private final String archiveLogDestinationName;
-    private final OracleConnection connection;
+    private final DamengConnection connection;
 
-    public LogFileCollector(OracleConnectorConfig connectorConfig, OracleConnection connection) {
+    public LogFileCollector(DamengConnectorConfig connectorConfig, DamengConnection connection) {
         this.initialDelay = connectorConfig.getLogMiningInitialDelay();
         this.maxRetryDelay = connectorConfig.getLogMiningMaxDelay();
         this.maxAttempts = connectorConfig.getMaximumNumberOfLogQueryRetries();
@@ -270,7 +270,7 @@ public class LogFileCollector {
                     }
                     else if (allThreadArchiveLogs.stream().anyMatch(l -> l.isScnInLogFileRange(startScn))) {
                         logException(String.format("Redo thread %d is inconsistent; does not have a log that conatins scn %s. " +
-                                "A recent log switch may not have been archived by the Oracle ARC process yet.", threadId, startScn));
+                                "A recent log switch may not have been archived by the Dameng ARC process yet.", threadId, startScn));
                         return false;
                     }
                     else {

@@ -5,16 +5,13 @@
  */
 package org.devlive.connector.dameng.xstream;
 
-import io.debezium.connector.oracle.BaseChangeRecordEmitter;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Table;
 import io.debezium.util.Clock;
-import oracle.streams.ColumnValue;
-import oracle.streams.RowLCR;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.DamengDatabaseSchema;
 
 import java.util.Map;
 
@@ -27,9 +24,9 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
 
     private final RowLCR lcr;
 
-    public XStreamChangeRecordEmitter(OracleConnectorConfig connectorConfig, Partition partition, OffsetContext offset, RowLCR lcr,
+    public XStreamChangeRecordEmitter(DamengConnectorConfig connectorConfig, Partition partition, OffsetContext offset, RowLCR lcr,
                                       Map<String, Object> oldChunkValues, Map<String, Object> newChunkValues,
-                                      Table table, OracleDatabaseSchema schema, Clock clock) {
+                                      Table table, DamengDatabaseSchema schema, Clock clock) {
         super(connectorConfig, partition, offset, schema, table, clock, getColumnValues(table, lcr.getOldValues(), oldChunkValues),
                 getColumnValues(table, lcr.getNewValues(), newChunkValues));
         this.lcr = lcr;

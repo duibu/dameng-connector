@@ -5,10 +5,10 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.ehcache.serialization;
 
-import io.debezium.connector.oracle.OracleValueConverters;
-import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.relational.TableId;
+import org.devlive.connector.dameng.DamengValueConverters;
+import org.devlive.connector.dameng.Scn;
+import org.devlive.connector.dameng.logminer.parser.LogMinerDmlEntry;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -141,7 +141,7 @@ public class SerializerOutputStream extends AbstractSerializerStream {
             if (values[i] == null) {
                 results[i] = NULL_VALUE_SENTINEL;
             }
-            else if (values[i] == OracleValueConverters.UNAVAILABLE_VALUE) {
+            else if (values[i] == DamengValueConverters.UNAVAILABLE_VALUE) {
                 results[i] = UNAVAILABLE_VALUE_SENTINEL;
             }
             else {

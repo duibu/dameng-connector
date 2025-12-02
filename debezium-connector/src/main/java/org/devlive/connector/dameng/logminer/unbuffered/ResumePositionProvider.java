@@ -5,19 +5,18 @@
  */
 package org.devlive.connector.dameng.logminer.unbuffered;
 
-import io.debezium.connector.oracle.OracleConnection;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
-import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.LogFile;
-import io.debezium.connector.oracle.logminer.LogMinerSessionContext;
-import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.util.Clock;
 import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
+import org.devlive.connector.dameng.DamengConnection;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.Scn;
+import org.devlive.connector.dameng.logminer.LogFile;
+import org.devlive.connector.dameng.logminer.LogMinerSessionContext;
+import org.devlive.connector.dameng.logminer.event.EventType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,15 +43,15 @@ public class ResumePositionProvider implements AutoCloseable {
 
     private final Logger LOGGER = LoggerFactory.getLogger(ResumePositionProvider.class);
 
-    private final OracleConnectorConfig connectorConfig;
+    private final DamengConnectorConfig connectorConfig;
     private final JdbcConfiguration jdbcConfig;
     private final Duration updateInterval;
 
-    private OracleConnection connection;
+    private DamengConnection connection;
     private LogMinerSessionContext sessionContext;
     private volatile Timer queryTimer;
 
-    public ResumePositionProvider(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig) {
+    public ResumePositionProvider(DamengConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig) {
         this.connectorConfig = connectorConfig;
         this.jdbcConfig = jdbcConfig;
         this.updateInterval = connectorConfig.getResumePositionUpdateInterval();
@@ -78,7 +77,7 @@ public class ResumePositionProvider implements AutoCloseable {
             // Lazily create the connection if it doesn't exist.
             if (connection == null) {
                 LOGGER.info("Starting the unbuffered resume position provider");
-                connection = new OracleConnection(jdbcConfig, false);
+                connection = new DamengConnection(jdbcConfig, false);
 
                 // Always make sure connection is not set to auto-commit
                 connection.setAutoCommit(false);
@@ -88,7 +87,7 @@ public class ResumePositionProvider implements AutoCloseable {
                     connection.resetSessionToCdb();
                 }
 
-                sessionContext = new LogMinerSessionContext(connection, false, LogMiningStrategy.ONLINE_CATALOG, connectorConfig.getLogMiningPathToDictionary());
+                sessionContext = new LogMinerSessionContext(connection, false, DamengConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, connectorConfig.getLogMiningPathToDictionary());
             }
 
             sessionContext.removeAllLogFilesFromSession();

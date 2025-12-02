@@ -8,12 +8,6 @@ package org.devlive.connector.dameng.logminer;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.*;
-import io.debezium.connector.oracle.OracleConnection.NonRelationalTableException;
-import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics.BatchMetrics;
-import io.debezium.connector.oracle.logminer.events.*;
-import io.debezium.connector.oracle.logminer.parser.*;
-import io.debezium.connector.oracle.logminer.parser.LobWriteParser.LobWrite;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -25,7 +19,14 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.text.ParsingException;
-import io.debezium.util.*;
+import io.debezium.util.Clock;
+import io.debezium.util.Loggings;
+import io.debezium.util.Metronome;
+import io.debezium.util.Stopwatch;
+import io.debezium.util.Strings;
+import org.devlive.connector.dameng.*;
+import org.devlive.connector.dameng.logminer.event.*;
+import org.devlive.connector.dameng.logminer.parser.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,15 +40,17 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.devlive.connector.dameng.Scn;
+
 
 /**
- * An abstract implementation of the {@link StreamingChangeEventSource} for Oracle LogMiner, that is the basis
+ * An abstract implementation of the {@link StreamingChangeEventSource} for Dameng LogMiner, that is the basis
  * for both the buffered and unbuffered adapter implementations.
  *
  * @author Chris Cranford
  */
 public abstract class AbstractLogMinerStreamingChangeEventSource
-        implements StreamingChangeEventSource<OraclePartition, OracleOffsetContext> {
+        implements StreamingChangeEventSource<DamengPartition, DamengOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLogMinerStreamingChangeEventSource.class);
 
@@ -58,12 +61,12 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private static final int MAX_ITERATIONS_BEFORE_OFFSET_STALE = 25;
     private static final Long SMALL_REDO_LOG_WARNING = 524_288_000L;
 
-    private final OracleConnectorConfig connectorConfig;
-    private final OracleConnection jdbcConnection;
-    private final EventDispatcher<OraclePartition, TableId> dispatcher;
+    private final DamengConnectorConfig connectorConfig;
+    private final DamengConnection jdbcConnection;
+    private final EventDispatcher<DamengPartition, TableId> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
-    private final OracleDatabaseSchema schema;
+    private final DamengDatabaseSchema schema;
     private final LogMinerStreamingChangeEventSourceMetrics metrics;
     private final JdbcConfiguration jdbcConfiguration;
     private final boolean useContinuousMining;
@@ -80,19 +83,19 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private boolean sequenceUnavailable = false;
     private List<LogFile> currentLogFiles;
     private List<BigInteger> currentRedoLogSequences;
-    private OracleOffsetContext effectiveOffset;
-    private OraclePartition partition;
+    private DamengOffsetContext effectiveOffset;
+    private DamengPartition partition;
     private ChangeEventSourceContext context;
     private int currentBatchSize;
     private long currentSleepTime;
     private OffsetActivityMonitor offsetActivityMonitor;
 
-    public AbstractLogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
-                                                      OracleConnection jdbcConnection,
-                                                      EventDispatcher<OraclePartition, TableId> dispatcher,
+    public AbstractLogMinerStreamingChangeEventSource(DamengConnectorConfig connectorConfig,
+                                                      DamengConnection jdbcConnection,
+                                                      EventDispatcher<DamengPartition, TableId> dispatcher,
                                                       ErrorHandler errorHandler,
                                                       Clock clock,
-                                                      OracleDatabaseSchema schema,
+                                                      DamengDatabaseSchema schema,
                                                       Configuration jdbcConfig,
                                                       LogMinerStreamingChangeEventSourceMetrics metrics) {
         this.connectorConfig = connectorConfig;
@@ -103,7 +106,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.schema = schema;
         this.metrics = metrics;
         this.jdbcConfiguration = JdbcConfiguration.adapt(jdbcConfig);
-        this.useContinuousMining = connectorConfig.isLogMiningContinuousMining(jdbcConnection.getOracleVersion());
+        this.useContinuousMining = connectorConfig.isLogMiningContinuousMining(jdbcConnection.getDamengVersion());
         this.logCollector = new LogFileCollector(connectorConfig, jdbcConnection);
         this.sessionContext = new LogMinerSessionContext(jdbcConnection, useContinuousMining, connectorConfig.getLogMiningStrategy(),
                 connectorConfig.getLogMiningPathToDictionary());
@@ -120,17 +123,17 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     @Override
-    public void init(OracleOffsetContext offsetContext) throws InterruptedException {
+    public void init(DamengOffsetContext offsetContext) throws InterruptedException {
         this.effectiveOffset = offsetContext == null ? emptyContext() : offsetContext;
     }
 
     @Override
-    public OracleOffsetContext getOffsetContext() {
+    public DamengOffsetContext getOffsetContext() {
         return effectiveOffset;
     }
 
     @Override
-    public void execute(ChangeEventSourceContext context, OraclePartition partition, OracleOffsetContext offsetContext)
+    public void execute(ChangeEventSourceContext context, DamengPartition partition, DamengOffsetContext offsetContext)
             throws InterruptedException {
         try {
             // Set these first as this state is needed by later code calls during streaming
@@ -215,15 +218,15 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         return sessionContext;
     }
 
-    protected OraclePartition getPartition() {
+    protected DamengPartition getPartition() {
         return partition;
     }
 
-    protected EventDispatcher<OraclePartition, TableId> getEventDispatcher() {
+    protected EventDispatcher<DamengPartition, TableId> getEventDispatcher() {
         return dispatcher;
     }
 
-    protected OracleDatabaseSchema getSchema() {
+    protected DamengDatabaseSchema getSchema() {
         return schema;
     }
 
@@ -231,7 +234,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         return clock;
     }
 
-    protected OracleConnectorConfig getConfig() {
+    protected DamengConnectorConfig getConfig() {
         return connectorConfig;
     }
 
@@ -239,7 +242,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         return jdbcConfiguration;
     }
 
-    protected OracleConnection getConnection() {
+    protected DamengConnection getConnection() {
         return jdbcConnection;
     }
 
@@ -247,7 +250,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         return metrics;
     }
 
-    protected BatchMetrics getBatchMetrics() {
+    protected LogMinerStreamingChangeEventSourceMetrics.BatchMetrics getBatchMetrics() {
         return metrics.getBatchMetrics();
     }
 
@@ -256,11 +259,11 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     protected boolean isUsingCatalogInRedoStrategy() {
-        return OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(connectorConfig.getLogMiningStrategy());
+        return DamengConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(connectorConfig.getLogMiningStrategy());
     }
 
     protected boolean isUsingHybridStrategy() {
-        return OracleConnectorConfig.LogMiningStrategy.HYBRID.equals(connectorConfig.getLogMiningStrategy());
+        return DamengConnectorConfig.LogMiningStrategy.HYBRID.equals(connectorConfig.getLogMiningStrategy());
     }
 
     protected boolean isUsingCommittedDataOnly() {
@@ -620,7 +623,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                 return;
             }
 
-            final LobWrite parsedEvent = LobWriteParser.parse(event.getRedoSql());
+            final LobWriteParser.LobWrite parsedEvent = LobWriteParser.parse(event.getRedoSql());
             if (parsedEvent != null) {
                 enqueueEvent(event, new LobWriteEvent(event, parsedEvent));
             }
@@ -1238,7 +1241,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                 getPartition(),
                 getOffsetContext(),
                 tableId,
-                new OracleSchemaChangeEventEmitter(
+                new DamengSchemaChangeEventEmitter(
                         getConfig(),
                         getPartition(),
                         getOffsetContext(),
@@ -1390,7 +1393,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                     parser = dmlParser;
                 }
 
-                final LogMinerDmlEntry parsedEvent = parser.parse(event.getRedoSql(), table);
+                final org.devlive.connector.dameng.logminer.valueholder.LogMinerDmlEntry parsedEvent = parser.parse(event.getRedoSql(), table);
 
                 if (parsedEvent.getOldValues().length == 0) {
                     switch (parsedEvent.getEventType()) {
@@ -1504,7 +1507,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         if (tableId != null && isUsingHybridStrategy()) {
             if (tableId.table().startsWith("BIN$")) {
                 // Object was dropped but has not been purged.
-                try (OracleConnection connection = new OracleConnection(getConfig().getJdbcConfig())) {
+                try (DamengConnection connection = new DamengConnection(getConfig().getJdbcConfig())) {
                     return connection.prepareQueryAndMap("SELECT OWNER, ORIGINAL_NAME FROM DBA_RECYCLEBIN WHERE OBJECT_NAME=?",
                             ps -> ps.setString(1, tableId.table()),
                             rs -> {
@@ -1639,7 +1642,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     protected Table dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(TableId tableId) throws SQLException, InterruptedException {
         LOGGER.warn("Obtaining schema for table {}, which should already be loaded.", tableId);
         // Given that the current connection is used for processing the event data, a separate connection is needed
-        try (OracleConnection connection = new OracleConnection(getConfig().getJdbcConfig(), false)) {
+        try (DamengConnection connection = new DamengConnection(getConfig().getJdbcConfig(), false)) {
             connection.setAutoCommit(false);
             if (isUsingPluggableDatabase()) {
                 connection.setSessionToPdb(getConfig().getPdbName());
@@ -1655,7 +1658,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                     getPartition(),
                     getOffsetContext(),
                     tableId,
-                    new OracleSchemaChangeEventEmitter(
+                    new DamengSchemaChangeEventEmitter(
                             getConfig(),
                             getPartition(),
                             getOffsetContext(),
@@ -1672,7 +1675,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
             return getSchema().tableFor(tableId);
         }
-        catch (NonRelationalTableException e) {
+        catch (DamengConnection.NonRelationalTableException e) {
             LOGGER.warn("{} The event will be skipped.", e.getMessage());
             getMetrics().incrementWarningCount();
             return null;
@@ -1893,7 +1896,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
                 if (scn.compareTo(firstScn) < 0) {
                     LOGGER.warn("Transaction {} was still ongoing while snapshot was taken, but is no longer completely " +
-                            "recorded in the archive logs. Events will be lost. Oldest SCN in logs = {}, TX start SCN = {}",
+                                    "recorded in the archive logs. Events will be lost. Oldest SCN in logs = {}, TX start SCN = {}",
                             transactionId, firstScn, scn);
                     minScn = firstScn;
                 }
@@ -2000,8 +2003,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             // This happens only if the deviation calculation is outside the flashback/undo area or an exception was thrown.
             // In this case we have no choice but to use the upper bounds as a fallback.
             LOGGER.warn("Mining session end SCN deviation calculation is outside undo space, using upperbounds {}. If this continues, " +
-                    "consider lowering the value of the '{}' configuration property.", upperboundsScn,
-                    OracleConnectorConfig.LOG_MINING_MAX_SCN_DEVIATION_MS.name());
+                            "consider lowering the value of the '{}' configuration property.", upperboundsScn,
+                    DamengConnectorConfig.LOG_MINING_MAX_SCN_DEVIATION_MS.name());
             return Optional.of(upperboundsScn);
         }
         else if (calculatedDeviatedEndScn.get().compareTo(lowerboundsScn) <= 0) {
@@ -2127,8 +2130,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         return NO_REDO_SQL_FOR_TEMPORARY_TABLES.equals(event.getRedoSql());
     }
 
-    private OracleOffsetContext emptyContext() {
-        return OracleOffsetContext.create().logicalName(connectorConfig)
+    private DamengOffsetContext emptyContext() {
+        return DamengOffsetContext.create().logicalName(connectorConfig)
                 .snapshotPendingTransactions(Collections.emptyMap())
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>()).build();

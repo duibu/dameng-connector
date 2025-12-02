@@ -5,11 +5,9 @@
  */
 package org.devlive.connector.dameng.xstream;
 
-import io.debezium.connector.oracle.Scn;
 import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
-import oracle.streams.StreamsException;
-import oracle.streams.XStreamUtility;
+import org.devlive.connector.dameng.Scn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

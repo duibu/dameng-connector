@@ -5,7 +5,8 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.ehcache.serialization;
 
-import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
+
+import org.devlive.connector.dameng.logminer.event.XmlEndEvent;
 
 /**
  * A specialized implementation of {@link SerdesProvider} for {@link XmlEndEvent} types.

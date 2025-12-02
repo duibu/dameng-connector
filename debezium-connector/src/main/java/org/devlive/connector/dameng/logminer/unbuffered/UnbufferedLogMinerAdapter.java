@@ -7,9 +7,6 @@ package org.devlive.connector.dameng.logminer.unbuffered;
 
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.*;
-import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingAdapter;
-import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -17,10 +14,13 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
+import org.devlive.connector.dameng.*;
+import org.devlive.connector.dameng.logminer.AbstractLogMinerStreamingAdapter;
+import org.devlive.connector.dameng.logminer.LogMinerStreamingChangeEventSourceMetrics;
 
 /**
- * An Oracle LogMiner {@link io.debezium.connector.oracle.StreamingAdapter} implementation that relies on
- * Oracle LogMiner's {@code COMMITTED_DATA_ONLY} mode to capture changes without requiring that the
+ * An Dameng LogMiner {@link StreamingAdapter} implementation that relies on
+ * Dameng LogMiner's {@code COMMITTED_DATA_ONLY} mode to capture changes without requiring that the
  * connector buffer large transactions.
  *
  * @author Chris Cranford
@@ -30,7 +30,7 @@ public class UnbufferedLogMinerAdapter extends AbstractLogMinerStreamingAdapter 
 
     public static final String TYPE = "logminer_unbuffered";
 
-    public UnbufferedLogMinerAdapter(OracleConnectorConfig connectorConfig) {
+    public UnbufferedLogMinerAdapter(DamengConnectorConfig connectorConfig) {
         super(connectorConfig);
     }
 
@@ -40,12 +40,12 @@ public class UnbufferedLogMinerAdapter extends AbstractLogMinerStreamingAdapter 
     }
 
     @Override
-    public StreamingChangeEventSource<OraclePartition, OracleOffsetContext> getSource(OracleConnection connection,
-                                                                                      EventDispatcher<OraclePartition, TableId> dispatcher,
+    public StreamingChangeEventSource<DamengPartition, DamengOffsetContext> getSource(DamengConnection connection,
+                                                                                      EventDispatcher<DamengPartition, TableId> dispatcher,
                                                                                       ErrorHandler errorHandler,
                                                                                       Clock clock,
-                                                                                      OracleDatabaseSchema schema,
-                                                                                      OracleTaskContext taskContext,
+                                                                                      DamengDatabaseSchema schema,
+                                                                                      DamengTaskContext taskContext,
                                                                                       Configuration jdbcConfig,
                                                                                       LogMinerStreamingChangeEventSourceMetrics streamingMetrics,
                                                                                       SnapshotterService snapshotterService) {
@@ -61,12 +61,12 @@ public class UnbufferedLogMinerAdapter extends AbstractLogMinerStreamingAdapter 
     }
 
     @Override
-    public OffsetContext.Loader<OracleOffsetContext> getOffsetContextLoader() {
+    public OffsetContext.Loader<DamengOffsetContext> getOffsetContextLoader() {
         return new UnbufferedLogMinerDamengOffsetContextLoader(connectorConfig);
     }
 
     @Override
-    public OracleOffsetContext copyOffset(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext) {
+    public DamengOffsetContext copyOffset(DamengConnectorConfig connectorConfig, DamengOffsetContext offsetContext) {
         return new UnbufferedLogMinerDamengOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
     }
 }

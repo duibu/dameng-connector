@@ -7,12 +7,15 @@ package org.devlive.connector.dameng;
 
 import io.debezium.DebeziumException;
 import io.debezium.data.Envelope.Operation;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.*;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
 import org.apache.kafka.connect.data.Struct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.util.Collections;
@@ -22,44 +25,35 @@ import java.util.stream.Collectors;
 /**
  * Base class to emit change data based on a single entry event.
  */
-public abstract class BaseChangeRecordEmitter<T, P extends Partition>
-        extends RelationalChangeRecordEmitter<P>
-{
-    
+public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordEmitter {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(BaseChangeRecordEmitter.class);
+
     private final DamengConnectorConfig connectorConfig;
     private final Object[] oldColumnValues;
     private final Object[] newColumnValues;
     private final DamengDatabaseSchema schema;
-    
     protected final Table table;
 
-    protected BaseChangeRecordEmitter(DamengConnectorConfig connectorConfig, P partition, OffsetContext offset, DamengDatabaseSchema  schema, Table table, Clock clock,
-                                      Object[] oldColumnValues, Object[] newColumnValues)
-    {
+    protected BaseChangeRecordEmitter(DamengConnectorConfig connectorConfig, Partition partition, OffsetContext offset,
+                                      DamengDatabaseSchema schema, Table table, Clock clock, Object[] oldColumnValues,
+                                      Object[] newColumnValues) {
         super(partition, offset, clock, connectorConfig);
         this.connectorConfig = connectorConfig;
-        this.table = table;
         this.schema = schema;
         this.oldColumnValues = oldColumnValues;
         this.newColumnValues = newColumnValues;
+        this.table = table;
     }
 
-    public abstract Operation getOperation();
+    @Override
+    protected Object[] getOldColumnValues() {
+        return oldColumnValues;
+    }
 
-    protected abstract String getColumnName(T columnValue);
-
-    protected abstract Object getColumnData(T columnValue);
-
-    protected Object[] getColumnValues(T[] columnValues)
-    {
-        Object[] values = new Object[table.columns().size()];
-
-        for (T columnValue : columnValues) {
-            int index = table.columnWithName(getColumnName(columnValue)).position() - 1;
-            values[index] = getColumnData(columnValue);
-        }
-
-        return values;
+    @Override
+    protected Object[] getNewColumnValues() {
+        return newColumnValues;
     }
 
     @Override
@@ -78,7 +72,8 @@ public abstract class BaseChangeRecordEmitter<T, P extends Partition>
                 LOGGER.info("Table '{}' primary key changed from '{}' to '{}' via an UPDATE, re-selecting LOB columns {} out of bands.",
                         table.id(), oldKey, newKey, reselectColumns.stream().map(Column::name).collect(Collectors.toList()));
 
-                try (OracleConnection connection = new OracleConnection(connectorConfig)) {
+                final JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
+                try (DamengConnection connection = new DamengConnection(jdbcConfig, false)) {
                     final String query = getReselectQuery(reselectColumns, table, connection);
                     if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
                         connection.setSessionToPdb(connectorConfig.getPdbName());
@@ -103,6 +98,17 @@ public abstract class BaseChangeRecordEmitter<T, P extends Partition>
         super.emitUpdateAsPrimaryKeyChangeRecord(receiver, tableSchema, oldKey, newKey, oldValue, newValue);
     }
 
+    /**
+     * Returns a list of columns that should be reselected.
+     *
+     * Currently, this method is only concerned about LOB-based columns and so if a table does not have any
+     * LOB columns or if the LOB column's value is not the unavailable value placeholder configured in the
+     * connector configuration, this method may return no columns indicating that a reselection is not
+     * required for the change event.
+     *
+     * @param newValue the currently constructed new value payload for the change event, should not be null
+     * @return list of columns that should be reselected, which can be empty
+     */
     private List<Column> getReselectColumns(Struct newValue) {
         List<Column> lobColumns = schema.getLobColumnsForTable(table.id());
         if (lobColumns.isEmpty()) {
@@ -205,3 +211,4 @@ public abstract class BaseChangeRecordEmitter<T, P extends Partition>
         }
     }
 }
+

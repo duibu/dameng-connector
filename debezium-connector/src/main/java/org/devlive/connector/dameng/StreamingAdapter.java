@@ -111,5 +111,5 @@ public interface  StreamingAdapter<T extends AbstractDamengStreamingChangeEventS
      * @param offsetContext   the current offset context, should never be {@code null}
      * @return a copy of the offset context for this adapter
      */
-    DamengOffsetContext copyOffset(DamengConnection connectorConfig, DamengOffsetContext offsetContext);
+    DamengOffsetContext copyOffset(DamengConnectorConfig connectorConfig, DamengOffsetContext offsetContext);
 }

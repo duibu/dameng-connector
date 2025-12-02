@@ -6,11 +6,11 @@
 package org.devlive.connector.dameng.logminer.logwriter;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.oracle.OracleConnection;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.Scn;
 import io.debezium.relational.TableId;
 import io.debezium.util.Strings;
+import org.devlive.connector.dameng.DamengConnection;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.Scn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +18,7 @@ import java.sql.SQLException;
 
 /**
  * A {@link LogWriterFlushStrategy} that uses a transaction commit to force the provided
- * connection's Oracle LogWriter (LGWR) process to flush to disk.
+ * connection's Dameng LogWriter (LGWR) process to flush to disk.
  *
  * @author Chris Cranford
  */
@@ -34,10 +34,10 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
     private final String flushTableName;
     private final TableId flushTableId;
     private final String databasePdbName;
-    private final OracleConnection connection;
+    private final DamengConnection connection;
 
     /**
-     * Creates a transaction-commit Oracle LogWriter (LGWR) process flush strategy.
+     * Creates a transaction-commit Dameng LogWriter (LGWR) process flush strategy.
      *
      * This will use the existing database connection to make the flush and the connection will not
      * be automatically closed when the strategy is closed.
@@ -45,7 +45,7 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
      * @param connectorConfig the connector configuration, must not be {@code null}
      * @param connection the connection to be used to force the flush, must not be {@code null}
      */
-    public CommitLogWriterFlushStrategy(OracleConnectorConfig connectorConfig, OracleConnection connection) {
+    public CommitLogWriterFlushStrategy(DamengConnectorConfig connectorConfig, DamengConnection connection) {
         this.flushTableId = TableId.parse(connectorConfig.getLogMiningFlushTableName());
         this.flushTableName = flushTableId.toDoubleQuotedString();
         this.databasePdbName = connectorConfig.getPdbName();
@@ -71,7 +71,7 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
             connection.execute(String.format(UPDATE_FLUSH_TABLE, flushTableName) + currentScn);
         }
         catch (SQLException e) {
-            throw new DebeziumException("Failed to flush Oracle LogWriter (LGWR) buffers to disk", e);
+            throw new DebeziumException("Failed to flush Dameng LogWriter (LGWR) buffers to disk", e);
         }
         finally {
             if (!Strings.isNullOrEmpty(databasePdbName)) {

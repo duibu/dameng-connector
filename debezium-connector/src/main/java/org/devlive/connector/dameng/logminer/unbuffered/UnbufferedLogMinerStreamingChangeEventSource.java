@@ -8,13 +8,6 @@ package org.devlive.connector.dameng.logminer.unbuffered;
 import io.debezium.DebeziumException;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.*;
-import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
-import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
-import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
-import io.debezium.connector.oracle.logminer.events.*;
-import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -24,6 +17,13 @@ import io.debezium.util.Clock;
 import io.debezium.util.Loggings;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Strings;
+import org.devlive.connector.dameng.*;
+import org.devlive.connector.dameng.logminer.AbstractLogMinerStreamingChangeEventSource;
+import org.devlive.connector.dameng.logminer.LogMinerChangeRecordEmitter;
+import org.devlive.connector.dameng.logminer.LogMinerStreamingChangeEventSourceMetrics;
+import org.devlive.connector.dameng.logminer.TransactionCommitConsumer;
+import org.devlive.connector.dameng.logminer.event.*;
+import org.devlive.connector.dameng.logminer.parser.LogMinerDmlEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,8 +38,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * An Oracle LogMiner {@link io.debezium.pipeline.source.spi.StreamingChangeEventSource} implementation that
- * relies on using Oracle LogMiner's {@code COMMITTED_DATA_ONLY} mode to capture changes without requiring
+ * An Dameng LogMiner {@link io.debezium.pipeline.source.spi.StreamingChangeEventSource} implementation that
+ * relies on using Dameng LogMiner's {@code COMMITTED_DATA_ONLY} mode to capture changes without requiring
  * that the connector buffer large transactions.
  *
  * @author Chris Cranford
@@ -59,12 +59,12 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     private ZoneOffset databaseOffset;
     private Scn lastCommitScn = Scn.NULL;
 
-    public UnbufferedLogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
-                                                        OracleConnection jdbcConnection,
-                                                        EventDispatcher<OraclePartition, TableId> dispatcher,
+    public UnbufferedLogMinerStreamingChangeEventSource(DamengConnectorConfig connectorConfig,
+                                                        DamengConnection jdbcConnection,
+                                                        EventDispatcher<DamengPartition, TableId> dispatcher,
                                                         ErrorHandler errorHandler,
                                                         Clock clock,
-                                                        OracleDatabaseSchema schema,
+                                                        DamengDatabaseSchema schema,
                                                         Configuration jdbcConfig,
                                                         LogMinerStreamingChangeEventSourceMetrics metrics) {
         super(connectorConfig, jdbcConnection, dispatcher, errorHandler, clock, schema, jdbcConfig, metrics);
@@ -230,7 +230,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     }
 
     /**
-     * Processes the Oracle LogMiner data between the specified bounds.
+     * Processes the Dameng LogMiner data between the specified bounds.
      *
      * @param minCommitScn mining range lower bounds SCN, should not be {@code null}
      * @return the next iteration's lower bounds SCN, never {@code null}
@@ -393,7 +393,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             return;
         }
 
-        throw new DebeziumException(String.format("Potential Oracle LogMiner Bug - " +
+        throw new DebeziumException(String.format("Potential Dameng LogMiner Bug - " +
                 "Rollback transaction %s with SCN %s found emitted %d captured changes. " +
                 "A re-snapshot may be required. Please review your topics populated by this transaction.",
                 event.getTransactionId(), event.getScn().toString(), accumulator.getTotalEvents()));

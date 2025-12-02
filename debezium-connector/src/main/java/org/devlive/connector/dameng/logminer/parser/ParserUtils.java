@@ -5,13 +5,13 @@
  */
 package org.devlive.connector.dameng.logminer.parser;
 
-import io.debezium.connector.oracle.OracleDatabaseSchema;
-import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
+import org.devlive.connector.dameng.DamengDatabaseSchema;
+import org.devlive.connector.dameng.DamengValueConverters;
 
 /**
- * Utility helper methods for the Oracle LogMiner DML parsing classes.
+ * Utility helper methods for the Dameng LogMiner DML parsing classes.
  *
  * @author Chris Cranford
  */
@@ -34,7 +34,7 @@ public class ParserUtils {
      * Resolve the column value for a given column value and column instance.
      * <p>
      * If the column value is {@code null} and the column is an LOB or XML-based column, this method will
-     * resolve the final column value as {@link OracleValueConverters#UNAVAILABLE_VALUE}, a value
+     * resolve the final column value as {@link DamengValueConverters#UNAVAILABLE_VALUE}, a value
      * that represents that the column should be emitted with the unavailable value placeholder.
      * <p>
      * If the column value is not {@code null} or is not an LOB-based column, the method will
@@ -45,8 +45,8 @@ public class ParserUtils {
      * @return the resolved column's value
      */
     public static Object getColumnUnavailableValue(Object value, Column column) {
-        if (value == null && OracleDatabaseSchema.isNullReplacedByUnavailableValue(column)) {
-            return OracleValueConverters.UNAVAILABLE_VALUE;
+        if (value == null && DamengDatabaseSchema.isNullReplacedByUnavailableValue(column)) {
+            return DamengValueConverters.UNAVAILABLE_VALUE;
         }
         return value;
     }

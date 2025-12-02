@@ -5,8 +5,8 @@
  */
 package org.devlive.connector.dameng.logminer.logwriter;
 
-import io.debezium.connector.oracle.Scn;
 import io.debezium.relational.TableId;
+import org.devlive.connector.dameng.Scn;
 
 /**
  * Strategy that controls how the Oracle LGWR (LogWriter) process is to be flushed.

@@ -6,9 +6,6 @@
 package org.devlive.connector.dameng.xstream;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.oracle.*;
-import io.debezium.connector.oracle.OracleConnection.NonRelationalTableException;
-import io.debezium.connector.oracle.xstream.XstreamStreamingChangeEventSource.PositionAndScn;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.relational.Column;
@@ -16,7 +13,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
-import oracle.streams.*;
+import org.devlive.connector.dameng.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Handler for Oracle DDL and DML events. Just forwards events to the {@link EventDispatcher}.
+ * Handler for Dameng DDL and DML events. Just forwards events to the {@link EventDispatcher}.
  *
  * @author Gunnar Morling
  */
@@ -35,22 +32,22 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LcrEventHandler.class);
 
-    private final OracleConnectorConfig connectorConfig;
+    private final DamengConnectorConfig connectorConfig;
     private final ErrorHandler errorHandler;
-    private final EventDispatcher<OraclePartition, TableId> dispatcher;
+    private final EventDispatcher<DamengPartition, TableId> dispatcher;
     private final Clock clock;
-    private final OracleDatabaseSchema schema;
-    private final OraclePartition partition;
-    private final OracleOffsetContext offsetContext;
+    private final DamengDatabaseSchema schema;
+    private final DamengPartition partition;
+    private final DamengOffsetContext offsetContext;
     private final boolean tablenameCaseInsensitive;
     private final XstreamStreamingChangeEventSource eventSource;
     private final XStreamStreamingChangeEventSourceMetrics streamingMetrics;
     private final Map<String, ChunkColumnValues> columnChunks;
     private RowLCR currentRow;
 
-    LcrEventHandler(OracleConnectorConfig connectorConfig, ErrorHandler errorHandler,
-                    EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
-                    OracleDatabaseSchema schema, OraclePartition partition, OracleOffsetContext offsetContext,
+    LcrEventHandler(DamengConnectorConfig connectorConfig, ErrorHandler errorHandler,
+                    EventDispatcher<DamengPartition, TableId> dispatcher, Clock clock,
+                    DamengDatabaseSchema schema, DamengPartition partition, DamengOffsetContext offsetContext,
                     boolean tablenameCaseInsensitive, XstreamStreamingChangeEventSource eventSource,
                     XStreamStreamingChangeEventSourceMetrics streamingMetrics) {
         this.connectorConfig = connectorConfig;
@@ -170,7 +167,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                     partition,
                     offsetContext,
                     tableId,
-                    new OracleSchemaChangeEventEmitter(
+                    new DamengSchemaChangeEventEmitter(
                             connectorConfig,
                             partition,
                             offsetContext,
@@ -190,7 +187,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         }
 
         // Xstream does not provide any before state for LOB columns and so this map will be
-        // populated here by column name with the OracleValueConverters.UNAVAILABLE_VALUE.
+        // populated here by column name with the DamengValueConverters.UNAVAILABLE_VALUE.
         Map<String, Object> oldChunkValues = new HashMap<>(0);
 
         if (chunkValues == null) {
@@ -210,11 +207,11 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
         for (Column column : schema.getLobColumnsForTable(table.id())) {
             // again Xstream doesn't supply before state for LOB values; explicitly use unavailable value
-            oldChunkValues.put(column.name(), OracleValueConverters.UNAVAILABLE_VALUE);
+            oldChunkValues.put(column.name(), DamengValueConverters.UNAVAILABLE_VALUE);
             if (!chunkValues.containsKey(column.name())) {
                 // Column not supplied, initialize with unavailable value marker
                 LOGGER.trace("\tColumn '{}' not supplied, initialized with unavailable value", column.name());
-                chunkValues.put(column.name(), OracleValueConverters.UNAVAILABLE_VALUE);
+                chunkValues.put(column.name(), DamengValueConverters.UNAVAILABLE_VALUE);
             }
         }
 
@@ -249,7 +246,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                 partition,
                 offsetContext,
                 tableId,
-                new OracleSchemaChangeEventEmitter(
+                new DamengSchemaChangeEventEmitter(
                         connectorConfig,
                         partition,
                         offsetContext,
@@ -297,7 +294,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         final String pdbName = connectorConfig.getPdbName();
         // A separate connection must be used for this out-of-bands query while processing the Xstream callback.
         // This should have negligible overhead as this should happen rarely.
-        try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig(), false)) {
+        try (DamengConnection connection = new DamengConnection(connectorConfig.getJdbcConfig(), false)) {
             if (!Strings.isNullOrBlank(pdbName)) {
                 connection.setSessionToPdb(pdbName);
             }
@@ -318,7 +315,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             if (message == null) {
                 return;
             }
-            LOGGER.debug("Recording offsets to Oracle");
+            LOGGER.debug("Recording offsets to Dameng");
             if (message.position != null) {
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Recording position {}", message.position);
@@ -336,10 +333,10 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                         XStreamOut.DEFAULT_MODE);
             }
             else {
-                LOGGER.warn("Nothing in offsets could be recorded to Oracle");
+                LOGGER.warn("Nothing in offsets could be recorded to Dameng");
                 return;
             }
-            LOGGER.trace("Offsets recorded to Oracle");
+            LOGGER.trace("Offsets recorded to Dameng");
         }
         catch (StreamsException e) {
             throw new DebeziumException("Couldn't set processed low watermark", e);

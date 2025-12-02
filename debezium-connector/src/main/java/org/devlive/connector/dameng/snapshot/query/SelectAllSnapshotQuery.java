@@ -10,16 +10,16 @@ import io.debezium.bean.StandardBeanNames;
 import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.bean.spi.BeanRegistryAware;
 import io.debezium.config.CommonConnectorConfig;
-import io.debezium.connector.oracle.OracleConnector;
-import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.snapshot.spi.SnapshotQuery;
+import org.devlive.connector.dameng.DamengConnector;
+import org.devlive.connector.dameng.DamengOffsetContext;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-@ConnectorSpecific(connector = OracleConnector.class)
+@ConnectorSpecific(connector = DamengConnector.class)
 public class SelectAllSnapshotQuery implements SnapshotQuery, BeanRegistryAware {
 
     private BeanRegistry beanRegistry;
@@ -44,7 +44,7 @@ public class SelectAllSnapshotQuery implements SnapshotQuery, BeanRegistryAware 
 
         final RelationalSnapshotChangeEventSource.RelationalSnapshotContext snapshotContext = beanRegistry.lookupByName(StandardBeanNames.SNAPSHOT_CONTEXT,
                 RelationalSnapshotChangeEventSource.RelationalSnapshotContext.class);
-        final OracleOffsetContext offset = (OracleOffsetContext) snapshotContext.offset;
+        final DamengOffsetContext offset = (DamengOffsetContext) snapshotContext.offset;
 
         final String snapshotOffset = offset.getScn().toString();
         String columns = String.join(", ", snapshotSelectColumns);

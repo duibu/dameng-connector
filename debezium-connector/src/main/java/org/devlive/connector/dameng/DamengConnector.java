@@ -20,34 +20,28 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class DamengConnector
-        extends RelationalBaseSourceConnector
-{
+public class DamengConnector extends RelationalBaseSourceConnector {
     private static final Logger LOGGER = LoggerFactory.getLogger(DamengConnector.class);
 
     private Map<String, String> properties;
 
     @Override
-    public String version()
-    {
+    public String version() {
         return Module.version();
     }
 
     @Override
-    public void start(Map<String, String> props)
-    {
+    public void start(Map<String, String> props) {
         this.properties = Collections.unmodifiableMap(new HashMap<>(props));
     }
 
     @Override
-    public Class<? extends Task> taskClass()
-    {
+    public Class<? extends Task> taskClass() {
         return DamengConnectorTask.class;
     }
 
     @Override
-    public List<Map<String, String>> taskConfigs(int maxTasks)
-    {
+    public List<Map<String, String>> taskConfigs(int maxTasks) {
         if (maxTasks > 1) {
             throw new IllegalArgumentException("Only a single connector task may be started");
         }
@@ -56,19 +50,16 @@ public class DamengConnector
     }
 
     @Override
-    public void stop()
-    {
+    public void stop() {
     }
 
     @Override
-    public ConfigDef config()
-    {
+    public ConfigDef config() {
         return DamengConnectorConfig.configDef();
     }
 
     @Override
-    protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config)
-    {
+    protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
         final ConfigValue databaseValue = configValues.get(RelationalDatabaseConnectorConfig.DATABASE_NAME.name());
         if (!databaseValue.errorMessages().isEmpty()) {
             return;
@@ -80,16 +71,14 @@ public class DamengConnector
         DamengConnectorConfig connectorConfig = new DamengConnectorConfig(config);
         try (DamengConnection connection = new DamengConnection(connectorConfig.jdbcConfig(), () -> getClass().getClassLoader())) {
             LOGGER.debug("Successfully tested connection for {} with user '{}'", DamengConnection.connectionString(config), connection.username());
-        }
-        catch (SQLException | RuntimeException e) {
+        } catch (SQLException | RuntimeException e) {
             LOGGER.info("Failed testing connection for {} with user '{}'", config.withMaskedPasswords(), userValue, e);
             hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
         }
     }
 
     @Override
-    protected Map<String, ConfigValue> validateAllFields(Configuration config)
-    {
+    protected Map<String, ConfigValue> validateAllFields(Configuration config) {
         return config.validate(DamengConnectorConfig.ALLFIELDS);
     }
 }

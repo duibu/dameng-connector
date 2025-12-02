@@ -7,7 +7,6 @@ package org.devlive.connector.dameng.olr;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
-import io.debezium.connector.oracle.*;
 import io.debezium.document.Document;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -21,6 +20,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
+import org.devlive.connector.dameng.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +38,7 @@ public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter<OpenLogRe
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenLogReplicatorAdapter.class);
     private static final String TYPE = "olr";
 
-    public OpenLogReplicatorAdapter(OracleConnectorConfig connectorConfig) {
+    public OpenLogReplicatorAdapter(DamengConnectorConfig connectorConfig) {
         super(connectorConfig);
     }
 
@@ -58,17 +58,17 @@ public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter<OpenLogRe
     }
 
     @Override
-    public OffsetContext.Loader<OracleOffsetContext> getOffsetContextLoader() {
+    public OffsetContext.Loader<DamengOffsetContext> getOffsetContextLoader() {
         return new OpenLogReplicatorDamengOffsetContextLoader(connectorConfig);
     }
 
     @Override
-    public StreamingChangeEventSource<OraclePartition, OracleOffsetContext> getSource(OracleConnection connection,
-                                                                                      EventDispatcher<OraclePartition, TableId> dispatcher,
+    public StreamingChangeEventSource<DamengPartition, DamengOffsetContext> getSource(DamengConnection connection,
+                                                                                      EventDispatcher<DamengPartition, TableId> dispatcher,
                                                                                       ErrorHandler errorHandler,
                                                                                       Clock clock,
-                                                                                      OracleDatabaseSchema schema,
-                                                                                      OracleTaskContext taskContext,
+                                                                                      DamengDatabaseSchema schema,
+                                                                                      DamengTaskContext taskContext,
                                                                                       Configuration jdbcConfig,
                                                                                       OpenLogReplicatorStreamingChangeEventSourceMetrics streamingMetrics,
                                                                                       SnapshotterService snapshotterService) {
@@ -84,16 +84,16 @@ public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter<OpenLogRe
     }
 
     @Override
-    public OpenLogReplicatorStreamingChangeEventSourceMetrics getStreamingMetrics(OracleTaskContext taskContext,
+    public OpenLogReplicatorStreamingChangeEventSourceMetrics getStreamingMetrics(DamengTaskContext taskContext,
                                                                                   ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                                   EventMetadataProvider metadataProvider,
-                                                                                  OracleConnectorConfig connectorConfig) {
+                                                                                  DamengConnectorConfig connectorConfig) {
         return new OpenLogReplicatorStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
     }
 
     @Override
-    public OracleOffsetContext determineSnapshotOffset(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx,
-                                                       OracleConnectorConfig connectorConfig, OracleConnection connection)
+    public DamengOffsetContext determineSnapshotOffset(RelationalSnapshotContext<DamengPartition, DamengOffsetContext> ctx,
+                                                       DamengConnectorConfig connectorConfig, DamengConnection connection)
             throws SQLException {
         final Optional<Scn> latestTableDdlScn = getLatestTableDdlScn(ctx, connection);
 
@@ -108,7 +108,7 @@ public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter<OpenLogRe
 
         LOGGER.info("\tCurrent SCN resolved as {}", currentScn);
 
-        return OracleOffsetContext.create()
+        return DamengOffsetContext.create()
                 .logicalName(connectorConfig)
                 .scn(currentScn)
                 .snapshotScn(currentScn)
@@ -119,17 +119,17 @@ public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter<OpenLogRe
     }
 
     @Override
-    public OracleValueConverters getValueConverter(OracleConnectorConfig connectorConfig, OracleConnection connection) {
+    public DamengValueConverters getValueConverter(DamengConnectorConfig connectorConfig, DamengConnection connection) {
         return new OpenLogReplicatorValueConverter(connectorConfig, connection);
     }
 
     @Override
-    public Scn getOffsetScn(OracleOffsetContext offsetContext) {
+    public Scn getOffsetScn(DamengOffsetContext offsetContext) {
         return offsetContext.getScn();
     }
 
     @Override
-    public OracleOffsetContext copyOffset(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext) {
+    public DamengOffsetContext copyOffset(DamengConnectorConfig connectorConfig, DamengOffsetContext offsetContext) {
         return new OpenLogReplicatorDamengOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
     }
 }

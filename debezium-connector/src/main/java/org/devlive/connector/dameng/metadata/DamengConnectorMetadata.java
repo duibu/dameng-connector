@@ -6,22 +6,22 @@
 package org.devlive.connector.dameng.metadata;
 
 import io.debezium.config.Field;
-import io.debezium.connector.oracle.Module;
-import io.debezium.connector.oracle.OracleConnector;
-import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.metadata.ConnectorDescriptor;
 import io.debezium.metadata.ConnectorMetadata;
+import org.devlive.connector.dameng.DamengConnector;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.Module;
 
 public class DamengConnectorMetadata implements ConnectorMetadata {
 
     @Override
     public ConnectorDescriptor getConnectorDescriptor() {
-        return new ConnectorDescriptor(OracleConnector.class.getName(), Module.version());
+        return new ConnectorDescriptor(DamengConnector.class.getName(), Module.version());
     }
 
     @Override
     public Field.Set getConnectorFields() {
-        return OracleConnectorConfig.ALL_FIELDS;
+        return DamengConnectorConfig.ALL_FIELDS;
     }
 
 }

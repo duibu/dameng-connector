@@ -45,9 +45,7 @@ import java.util.stream.Collectors;
  * LogMiner supplies very simple syntax , that this parser should be sufficient to parse those.
  * It does no support joins, merge, sub-selects and other complicated cases, which should be OK for LogMiner case
  */
-public class SimpleDmlParser
-        implements DmlParser
-{
+public class SimpleDmlParser implements DmlParser {
     private static final Logger LOGGER = LoggerFactory.getLogger(SimpleDmlParser.class);
     protected final String catalogName;
     private final DamengValueConverters converter;
@@ -61,10 +59,9 @@ public class SimpleDmlParser
      * Constructor
      *
      * @param catalogName database name
-     * @param converter value converter
+     * @param converter   value converter
      */
-    public SimpleDmlParser(String catalogName, DamengValueConverters converter)
-    {
+    public SimpleDmlParser(String catalogName, DamengValueConverters converter) {
         this.catalogName = catalogName;
         this.converter = converter;
         pm = new CCJSqlParserManager();
@@ -74,11 +71,10 @@ public class SimpleDmlParser
      * This parses a DML
      *
      * @param dmlContent DML
-     * @param table the table
+     * @param table      the table
      * @return parsed value holder class
      */
-    public LogMinerDmlEntry parse(String dmlContent, Table table, String txId)
-    {
+    public LogMinerDmlEntry parse(String dmlContent, Table table, String txId) {
         try {
             // If a table contains Spatial data type, DML input generates two entries in REDO LOG.
             // First with actual statement and second with NULL. It is not relevant at this point
@@ -107,30 +103,25 @@ public class SimpleDmlParser
                 List<LogMinerColumnValue> actualOldValues = oldColumnValues.values().stream()
                         .filter(LogMinerColumnValueWrapper::isProcessed).map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
                 return new LogMinerDmlEntryImpl(Envelope.Operation.UPDATE, actualNewValues, actualOldValues);
-            }
-            else if (st instanceof Insert) {
+            } else if (st instanceof Insert) {
                 parseInsert(table, (Insert) st);
                 List<LogMinerColumnValue> actualNewValues = newColumnValues.values()
                         .stream().map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
                 return new LogMinerDmlEntryImpl(Envelope.Operation.CREATE, actualNewValues, Collections.emptyList());
-            }
-            else if (st instanceof Delete) {
+            } else if (st instanceof Delete) {
                 parseDelete(table, (Delete) st);
                 List<LogMinerColumnValue> actualOldValues = oldColumnValues.values()
                         .stream().map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
                 return new LogMinerDmlEntryImpl(Envelope.Operation.DELETE, Collections.emptyList(), actualOldValues);
-            }
-            else {
+            } else {
                 throw new DmlParserException("Unexpected DML operation not supported");
             }
-        }
-        catch (Throwable e) {
+        } catch (Throwable e) {
             throw new DmlParserException("Cannot parse DML: " + dmlContent, e);
         }
     }
 
-    private void initColumns(Table table, String tableName)
-    {
+    private void initColumns(Table table, String tableName) {
         if (!table.id().table().equals(tableName)) {
             throw new ParsingException(null, "Resolved TableId expected table name '" + table.id().table() + "' but is '" + tableName + "'");
         }
@@ -147,8 +138,7 @@ public class SimpleDmlParser
 
     // this parses simple statement with only one table
     private void parseUpdate(Table table, Update st)
-            throws JSQLParserException
-    {
+            throws JSQLParserException {
         int tableCount = st.getTables().size();
         if (tableCount > 1 || tableCount == 0) {
             throw new JSQLParserException("DML includes " + tableCount + " tables");
@@ -166,25 +156,21 @@ public class SimpleDmlParser
         if (where != null) {
             parseWhereClause(where);
             ParserUtils.cloneOldToNewColumnValues(newColumnValues, oldColumnValues, table);
-        }
-        else {
+        } else {
             oldColumnValues.clear();
         }
     }
 
-    private void parseInsert(Table table, Insert st)
-    {
+    private void parseInsert(Table table, Insert st) {
         initColumns(table, ParserUtils.stripeQuotes(st.getTable().getName()));
         Alias alias = st.getTable().getAlias();
         aliasName = alias == null ? "" : alias.getName().trim();
 
         List<net.sf.jsqlparser.schema.Column> columns = st.getColumns();
         ItemsList values = st.getItemsList();
-        values.accept(new ItemsListVisitorAdapter()
-        {
+        values.accept(new ItemsListVisitorAdapter() {
             @Override
-            public void visit(ExpressionList expressionList)
-            {
+            public void visit(ExpressionList expressionList) {
                 super.visit(expressionList);
                 List<Expression> expressions = expressionList.getExpressions();
                 setNewValues(expressions, columns);
@@ -193,8 +179,7 @@ public class SimpleDmlParser
         oldColumnValues.clear();
     }
 
-    private void parseDelete(Table table, Delete st)
-    {
+    private void parseDelete(Table table, Delete st) {
         initColumns(table, ParserUtils.stripeQuotes(st.getTable().getName()));
         Alias alias = st.getTable().getAlias();
         aliasName = alias == null ? "" : alias.getName().trim();
@@ -204,14 +189,12 @@ public class SimpleDmlParser
         Expression where = st.getWhere();
         if (where != null) {
             parseWhereClause(where);
-        }
-        else {
+        } else {
             oldColumnValues.clear();
         }
     }
 
-    private void setNewValues(List<Expression> expressions, List<net.sf.jsqlparser.schema.Column> columns)
-    {
+    private void setNewValues(List<Expression> expressions, List<net.sf.jsqlparser.schema.Column> columns) {
         if (expressions.size() != columns.size()) {
             throw new RuntimeException("DML has " + expressions.size() + " column values, but Table object has " + columns.size() + " columns");
         }
@@ -235,13 +218,10 @@ public class SimpleDmlParser
         }
     }
 
-    private void parseWhereClause(Expression logicalExpression)
-    {
-        logicalExpression.accept(new ExpressionVisitorAdapter()
-        {
+    private void parseWhereClause(Expression logicalExpression) {
+        logicalExpression.accept(new ExpressionVisitorAdapter() {
             @Override
-            public void visit(EqualsTo expr)
-            {
+            public void visit(EqualsTo expr) {
                 super.visit(expr);
                 String columnName = expr.getLeftExpression().toString();
                 columnName = ParserUtils.stripeAlias(columnName, aliasName);
@@ -264,8 +244,7 @@ public class SimpleDmlParser
             }
 
             @Override
-            public void visit(IsNullExpression expr)
-            {
+            public void visit(IsNullExpression expr) {
                 super.visit(expr);
                 String columnName = expr.getLeftExpression().toString();
                 columnName = ParserUtils.stripeAlias(columnName, aliasName);

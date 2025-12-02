@@ -5,18 +5,19 @@
  */
 package org.devlive.connector.dameng.logminer;
 
-import io.debezium.connector.oracle.OracleCommonStreamingChangeEventSourceMetricsMXBean;
+
+import org.devlive.connector.dameng.DamengCommonStreamingChangeEventSourceMetricsMXBean;
 
 import java.math.BigInteger;
 import java.util.Set;
 
 /**
- * Oracle Streaming Metrics for Oracle LogMiner.
+ * Dameng Streaming Metrics for Dameng LogMiner.
  *
  * @author Chris Cranford
  */
 public interface LogMinerStreamingChangeEventSourceMetricsMXBean
-        extends OracleCommonStreamingChangeEventSourceMetricsMXBean {
+        extends DamengCommonStreamingChangeEventSourceMetricsMXBean {
 
     /**
      * Specifies the number of milliseconds that transactions are retained in the transaction buffer
@@ -38,7 +39,7 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
     BigInteger getCurrentScn();
 
     /**
-     * Oracle maintains two watermarks, a low and high system change number watermark. The low
+     * Dameng maintains two watermarks, a low and high system change number watermark. The low
      * watermark is the offset system change number, which represents the position in the logs
      * where the connector will begin reading changes upon restart.
      *
@@ -47,7 +48,7 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
     BigInteger getOffsetScn();
 
     /**
-     * Oracle maintains two watermarks, a low and high system change number watermark. The high
+     * Dameng maintains two watermarks, a low and high system change number watermark. The high
      * watermark is the commit system change number, which represents the position in the logs
      * where the last transaction commit occurred. This system change number is used to avoid
      * dispatching any transaction that committed before this system change number.

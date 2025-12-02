@@ -6,13 +6,12 @@
 package org.devlive.connector.dameng.converters;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.function.Predicates;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
 import io.debezium.util.Strings;
-import oracle.sql.RAW;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.devlive.connector.dameng.DamengValueConverters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +24,7 @@ import java.util.function.Predicate;
  * Oracle emits all {@code RAW} columns as {@code BYTES} by default. There may be use cases where the event
  * should emit the raw data as a {@code STRING} data type instead, and this converter can be used to easily
  * convert the RAW column bytes into a string representation of the data.<p></p>
- *
+ * <p>
  * If the RAW column cannot be expressed as string-based data, this converter should not be used.
  *
  * @author Chris Cranford
@@ -57,42 +56,40 @@ public class RawToStringConverter implements CustomConverter<SchemaBuilder, Rela
             if (x == null) {
                 if (field.isOptional()) {
                     return null;
-                }
-                else if (field.hasDefaultValue()) {
+                } else if (field.hasDefaultValue()) {
                     return field.defaultValue();
-                }
-                else {
+                } else {
                     return FALLBACK;
                 }
             }
-            try {
-                if (x instanceof String) {
-                    String data = (String) x;
-                    if (OracleValueConverters.EMPTY_BLOB_FUNCTION.equals(data)) {
-                        if (field.isOptional()) {
-                            return null;
-                        }
-                        return FALLBACK;
+//            try {
+            if (x instanceof String) {
+                String data = (String) x;
+                if (DamengValueConverters.EMPTY_BLOB_FUNCTION.equals(data)) {
+                    if (field.isOptional()) {
+                        return null;
                     }
-                    else if (OracleValueConverters.isHexToRawFunctionCall(data)) {
-                        x = RAW.hexString2Bytes(OracleValueConverters.getHexToRawHexString(data));
-                    }
-                    else {
-                        return x;
-                    }
-                }
-                else if (x instanceof RAW) {
-                    x = ((RAW) x).getBytes();
-                }
-                else if (!(x instanceof byte[])) {
-                    LOGGER.warn("Cannot convert '{}' to string", x.getClass());
                     return FALLBACK;
+                } else if (DamengValueConverters.isHexToRawFunctionCall(data)) {
+                    // TODO
+                    System.out.println(data);
+//                        x = RAW.hexString2Bytes(DamengValueConverters.getHexToRawHexString(data));
+                } else {
+                    return x;
                 }
-                return new String((byte[]) x, StandardCharsets.UTF_8);
             }
-            catch (SQLException e) {
-                throw new DebeziumException("Failed to convert value for column" + field.name(), e);
+//                else if (x instanceof RAW) {
+//                    x = ((RAW) x).getBytes();
+//                } 
+            else if (!(x instanceof byte[])) {
+                LOGGER.warn("Cannot convert '{}' to string", x.getClass());
+                return FALLBACK;
             }
+            return new String((byte[]) x, StandardCharsets.UTF_8);
+//            } 
+//            catch (SQLException e) {
+//                throw new DebeziumException("Failed to convert value for column" + field.name(), e);
+//            }
         });
     }
 }

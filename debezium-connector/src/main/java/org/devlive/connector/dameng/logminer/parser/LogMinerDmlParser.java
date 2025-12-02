@@ -43,14 +43,11 @@ import java.util.Map;
  *      where "C1" = TO_TIMESTAMP('2020-02-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS');
  * </pre>
  * <p>
- * The new value for {@code C1} would be {@code TO_TIMESTAMP('2020-02-02 00:00:00', 'YYYY-MM-DD HH24:MI:SS')}.
- * The old value for {@code C1} would be {@code TO_TIMESTAMP('2020-02-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')}.
+ * The old value for {@code C1} would be {@code TO_TIMESTAMP('2020-02-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')}. * The new value for {@code C1} would be {@code TO_TIMESTAMP('2020-02-02 00:00:00', 'YYYY-MM-DD HH24:MI:SS')}.
  *
  * @author Chris Cranford
  */
-public class LogMinerDmlParser
-        implements DmlParser
-{
+public class LogMinerDmlParser implements DmlParser {
     private static final String SINGLE_QUOTE = "'";
     private static final String NULL = "NULL";
     private static final String INSERT_INTO = "insert into ";
@@ -73,8 +70,7 @@ public class LogMinerDmlParser
     private static final int SET_LENGTH = SET.length();
     private static final int WHERE_LENGTH = WHERE.length();
 
-    private static <K, V> Map<K, V> createMap(List<K> keys, List<V> values)
-    {
+    private static <K, V> Map<K, V> createMap(List<K> keys, List<V> values) {
         Map<K, V> result = new LinkedHashMap<>(keys.size());
         for (int i = 0; i < keys.size(); ++i) {
             result.put(keys.get(i), values.get(i));
@@ -88,8 +84,7 @@ public class LogMinerDmlParser
      * @param text the text to remove single quotes
      * @return the text with single quotes removed
      */
-    private static String removeSingleQuotes(String text)
-    {
+    private static String removeSingleQuotes(String text) {
         if (text.startsWith(SINGLE_QUOTE) && text.endsWith(SINGLE_QUOTE)) {
             return text.substring(1, text.length() - 1);
         }
@@ -99,12 +94,11 @@ public class LogMinerDmlParser
     /**
      * Helper method to create a {@link LogMinerColumnValue} from a column name/value pair.
      *
-     * @param columnName the column name
+     * @param columnName  the column name
      * @param columnValue the column value
      * @return the LogMiner column value object
      */
-    private static LogMinerColumnValue createColumnValue(String columnName, String columnValue)
-    {
+    private static LogMinerColumnValue createColumnValue(String columnName, String columnValue) {
         LogMinerColumnValue value = new LogMinerColumnValueImpl(columnName, 0);
         if (columnValue != null && !columnValue.equals(NULL)) {
             value.setColumnData(columnValue);
@@ -113,8 +107,7 @@ public class LogMinerDmlParser
     }
 
     @Override
-    public LogMinerDmlEntry parse(String sql, Table table, String txId)
-    {
+    public LogMinerDmlEntry parse(String sql, Table table, String txId) {
         if (table == null) {
             throw new DmlParserException("DML parser requires a non-null table");
         }
@@ -135,12 +128,11 @@ public class LogMinerDmlParser
     /**
      * Parse an {@code INSERT} SQL statement.
      *
-     * @param sql the sql statement
+     * @param sql   the sql statement
      * @param table the table
      * @return the parsed DML entry record or {@code null} if the SQL was not parsed
      */
-    private LogMinerDmlEntry parseInsert(String sql, Table table)
-    {
+    private LogMinerDmlEntry parseInsert(String sql, Table table) {
         try {
             // advance beyond "insert into "
             int index = INSERT_INTO_LENGTH;
@@ -170,8 +162,7 @@ public class LogMinerDmlParser
             }
 
             return new LogMinerDmlEntryImpl(Envelope.Operation.CREATE, newValues, Collections.emptyList());
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new DmlParserException("Failed to parse insert DML: '" + sql + "'", e);
         }
     }
@@ -179,12 +170,11 @@ public class LogMinerDmlParser
     /**
      * Parse an {@code UPDATE} SQL statement.
      *
-     * @param sql the sql statement
+     * @param sql   the sql statement
      * @param table the table
      * @return the parsed DML entry record or {@code null} if the SQL was not parsed
      */
-    private LogMinerDmlEntry parseUpdate(String sql, Table table)
-    {
+    private LogMinerDmlEntry parseUpdate(String sql, Table table) {
         try {
             // advance beyond "update "
             int index = UPDATE_LENGTH;
@@ -214,8 +204,7 @@ public class LogMinerDmlParser
                     String columnValue = beforeColumnMap.get(columnName);
                     oldValues.add(createColumnValue(columnName, columnValue));
                 }
-            }
-            else {
+            } else {
                 oldValues = Collections.emptyList();
             }
 
@@ -229,21 +218,18 @@ public class LogMinerDmlParser
                         LogMinerColumnValue value = new LogMinerColumnValueImpl(columnName, 0);
                         value.setColumnData(afterColumnMap.get(columnName));
                         newValues.add(value);
-                    }
-                    else {
+                    } else {
                         LogMinerColumnValue value = new LogMinerColumnValueImpl(columnName, 0);
                         value.setColumnData(beforeColumnMap.get(columnName));
                         newValues.add(value);
                     }
                 }
-            }
-            else {
+            } else {
                 newValues = Collections.emptyList();
             }
 
             return new LogMinerDmlEntryImpl(Envelope.Operation.UPDATE, newValues, oldValues);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new DmlParserException("Failed to parse update DML: '" + sql + "'", e);
         }
     }
@@ -251,12 +237,11 @@ public class LogMinerDmlParser
     /**
      * Parses a SQL {@code DELETE} statement.
      *
-     * @param sql the sql statement
+     * @param sql   the sql statement
      * @param table the table
      * @return the parsed DML entry record or {@code null} if the SQL was not parsed
      */
-    private LogMinerDmlEntry parseDelete(String sql, Table table)
-    {
+    private LogMinerDmlEntry parseDelete(String sql, Table table) {
         try {
             // advance beyond "delete from "
             int index = DELETE_FROM_LENGTH;
@@ -279,14 +264,12 @@ public class LogMinerDmlParser
                     String columnValue = beforeColumnMap.get(columnName);
                     oldValues.add(createColumnValue(columnName, columnValue));
                 }
-            }
-            else {
+            } else {
                 oldValues = Collections.emptyList();
             }
 
             return new LogMinerDmlEntryImpl(Envelope.Operation.DELETE, Collections.emptyList(), oldValues);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new DmlParserException("Failed to parse delete DML: '" + sql + "'", e);
         }
     }
@@ -294,12 +277,11 @@ public class LogMinerDmlParser
     /**
      * Parses a table-name in the SQL clause
      *
-     * @param sql the sql statement
+     * @param sql   the sql statement
      * @param index the index into the sql statement to begin parsing
      * @return the index into the sql string where the table name ended
      */
-    private int parseTableName(String sql, int index)
-    {
+    private int parseTableName(String sql, int index) {
         boolean inQuote = false;
 
         for (; index < sql.length(); ++index) {
@@ -310,8 +292,7 @@ public class LogMinerDmlParser
                     continue;
                 }
                 inQuote = true;
-            }
-            else if ((c == ' ' || c == '(') && !inQuote) {
+            } else if ((c == ' ' || c == '(') && !inQuote) {
                 break;
             }
         }
@@ -322,25 +303,22 @@ public class LogMinerDmlParser
     /**
      * Parse an {@code INSERT} statement's column-list clause.
      *
-     * @param sql the sql statement
-     * @param start the index into the sql statement to begin parsing
+     * @param sql         the sql statement
+     * @param start       the index into the sql statement to begin parsing
      * @param columnNames the list that will be populated with the column names
      * @return the index into the sql string where the column-list clause ended
      */
-    private int parseColumnListClause(String sql, int start, List<String> columnNames)
-    {
+    private int parseColumnListClause(String sql, int start, List<String> columnNames) {
         int index = start;
         boolean inQuote = false;
         for (; index < sql.length(); ++index) {
             char c = sql.charAt(index);
             if (c == '(' && !inQuote) {
                 start = index + 1;
-            }
-            else if (c == ')' && !inQuote) {
+            } else if (c == ')' && !inQuote) {
                 index++;
                 break;
-            }
-            else if (c == '"') {
+            } else if (c == '"') {
                 if (inQuote) {
                     inQuote = false;
                     String s = sql.substring(start + 1, index);
@@ -362,13 +340,12 @@ public class LogMinerDmlParser
     /**
      * Parse an {@code INSERT} statement's column-values clause.
      *
-     * @param sql the sql statement
-     * @param start the index into the sql statement to begin parsing
+     * @param sql          the sql statement
+     * @param start        the index into the sql statement to begin parsing
      * @param columnValues the list of that will populated with the column values
      * @return the index into the sql string where the column-values clause ended
      */
-    private int parseColumnValuesClause(String sql, int start, List<String> columnValues)
-    {
+    private int parseColumnValuesClause(String sql, int start, List<String> columnValues) {
         int index = start;
         int nested = 0;
         boolean inQuote = false;
@@ -385,18 +362,15 @@ public class LogMinerDmlParser
             if (c == '(' && !inQuote && !inValues) {
                 inValues = true;
                 start = index + 1;
-            }
-            else if (c == '(' && !inQuote) {
+            } else if (c == '(' && !inQuote) {
                 nested++;
-            }
-            else if (c == '\'') {
+            } else if (c == '\'') {
                 if (inQuote) {
                     inQuote = false;
                     continue;
                 }
                 inQuote = true;
-            }
-            else if (!inQuote && (c == ',' || c == ')')) {
+            } else if (!inQuote && (c == ',' || c == ')')) {
                 if (c == ')' && nested != 0) {
                     nested--;
                     continue;
@@ -421,14 +395,13 @@ public class LogMinerDmlParser
     /**
      * Parse an {@code UPDATE} statement's {@code SET} clause.
      *
-     * @param sql the sql statement
-     * @param start the index into the sql statement to begin parsing
-     * @param columnNames the list of the changed column names that will be populated
+     * @param sql          the sql statement
+     * @param start        the index into the sql statement to begin parsing
+     * @param columnNames  the list of the changed column names that will be populated
      * @param columnValues the list of the changed column values that will be populated
      * @return the index into the sql string where the set-clause ended
      */
-    private int parseSetClause(String sql, int start, List<String> columnNames, List<String> columnValues)
-    {
+    private int parseSetClause(String sql, int start, List<String> columnNames, List<String> columnValues) {
         boolean inDoubleQuote = false;
         boolean inSingleQuote = false;
         boolean inColumnName = true;
@@ -457,14 +430,12 @@ public class LogMinerDmlParser
                 }
                 inDoubleQuote = true;
                 start = index;
-            }
-            else if (c == '=' && !inColumnName && !inColumnValue) {
+            } else if (c == '=' && !inColumnName && !inColumnValue) {
                 inColumnValue = true;
                 // Oracle SQL generated is always ' = ', skipping following space
                 index += 1;
                 start = index + 1;
-            }
-            else if (c == '\'' && inColumnValue) {
+            } else if (c == '\'' && inColumnValue) {
                 // Skip over double single quote
                 if (inSingleQuote && lookAhead == '\'') {
                     index += 1;
@@ -485,14 +456,12 @@ public class LogMinerDmlParser
                     start = index;
                 }
                 inSingleQuote = true;
-            }
-            else if (c == ',' && !inColumnValue && !inColumnName) {
+            } else if (c == ',' && !inColumnValue && !inColumnName) {
                 // Set clause uses ', ' skip following space
                 inColumnName = true;
                 index += 1;
                 start = index;
-            }
-            else if (inColumnValue && !inSingleQuote) {
+            } else if (inColumnValue && !inSingleQuote) {
                 if (!inSpecial) {
                     start = index;
                     inSpecial = true;
@@ -500,11 +469,9 @@ public class LogMinerDmlParser
                 // characters as a part of the value
                 if (c == '(') {
                     nested++;
-                }
-                else if (c == ')' && nested > 0) {
+                } else if (c == ')' && nested > 0) {
                     nested--;
-                }
-                else if ((c == ',' || c == ' ' || c == ';') && nested == 0) {
+                } else if ((c == ',' || c == ' ' || c == ';') && nested == 0) {
                     String value = sql.substring(start, index);
                     if (value.equals(NULL) || value.equals(UNSUPPORTED_TYPE)) {
                         columnValues.add(null);
@@ -513,8 +480,7 @@ public class LogMinerDmlParser
                         inSpecial = false;
                         inColumnName = true;
                         continue;
-                    }
-                    else if (value.equals(UNSUPPORTED)) {
+                    } else if (value.equals(UNSUPPORTED)) {
                         continue;
                     }
                     columnValues.add(sql.substring(start, index));
@@ -523,8 +489,7 @@ public class LogMinerDmlParser
                     inSpecial = false;
                     inColumnName = true;
                 }
-            }
-            else if (!inDoubleQuote && !inSingleQuote) {
+            } else if (!inDoubleQuote && !inSingleQuote) {
                 // else if (!inDoubleQuote && !inSingleQuote && sql.substring(index - 1, index + WHERE_LENGTH - 1).equals(WHERE)) {
                 if (c == 'W' && lookAhead == 'H' && sql.substring(index - 1, index + WHERE_LENGTH - 1).equals(WHERE)) {
                     index -= 1;
@@ -539,14 +504,13 @@ public class LogMinerDmlParser
     /**
      * Parses a {@code WHERE} clause populates the provided column names and values arrays.
      *
-     * @param sql the sql statement
-     * @param start the index into the sql statement to begin parsing
-     * @param columnNames the column names parsed from the clause
+     * @param sql          the sql statement
+     * @param start        the index into the sql statement to begin parsing
+     * @param columnNames  the column names parsed from the clause
      * @param columnValues the column values parsed from the clause
      * @return the index into the sql string to continue parsing
      */
-    private int parseWhereClause(String sql, int start, List<String> columnNames, List<String> columnValues)
-    {
+    private int parseWhereClause(String sql, int start, List<String> columnNames, List<String> columnValues) {
         int nested = 0;
         boolean inColumnName = true;
         boolean inColumnValue = false;
@@ -582,22 +546,19 @@ public class LogMinerDmlParser
                 }
                 inDoubleQuote = true;
                 start = index;
-            }
-            else if (c == '=' && !inColumnName && !inColumnValue) {
+            } else if (c == '=' && !inColumnName && !inColumnValue) {
                 inColumnValue = true;
                 // Oracle SQL generated is always ' = ', skipping following space
                 index += 1;
                 start = index + 1;
-            }
-            else if (c == 'I' && !inColumnName && !inColumnValue) {
+            } else if (c == 'I' && !inColumnName && !inColumnValue) {
                 if (sql.substring(index).startsWith(IS_NULL)) {
                     columnValues.add(null);
                     index += 6;
                     start = index;
                     continue;
                 }
-            }
-            else if (c == '\'' && inColumnValue) {
+            } else if (c == '\'' && inColumnValue) {
                 // Skip over double single quote
                 if (inSingleQuote && lookAhead == '\'') {
                     index += 1;
@@ -618,19 +579,16 @@ public class LogMinerDmlParser
                     start = index;
                 }
                 inSingleQuote = true;
-            }
-            else if (inColumnValue && !inSingleQuote) {
+            } else if (inColumnValue && !inSingleQuote) {
                 if (!inSpecial) {
                     start = index;
                     inSpecial = true;
                 }
                 if (c == '(') {
                     nested++;
-                }
-                else if (c == ')' && nested > 0) {
+                } else if (c == ')' && nested > 0) {
                     nested--;
-                }
-                else if ((c == ';' || c == ' ') && nested == 0) {
+                } else if ((c == ';' || c == ' ') && nested == 0) {
                     String value = sql.substring(start, index);
                     if (value.equals(NULL) || value.equals(UNSUPPORTED_TYPE)) {
                         columnValues.add(null);
@@ -639,8 +597,7 @@ public class LogMinerDmlParser
                         inSpecial = false;
                         inColumnName = true;
                         continue;
-                    }
-                    else if (value.equals(UNSUPPORTED)) {
+                    } else if (value.equals(UNSUPPORTED)) {
                         continue;
                     }
                     columnValues.add(sql.substring(start, index));
@@ -649,14 +606,12 @@ public class LogMinerDmlParser
                     inSpecial = false;
                     inColumnName = true;
                 }
-            }
-            else if (!inColumnValue && !inColumnName) {
+            } else if (!inColumnValue && !inColumnName) {
                 if (c == 'a' && lookAhead == 'n' && sql.substring(index).startsWith(AND)) {
                     index += 3;
                     start = index;
                     inColumnName = true;
-                }
-                else if (c == 'o' && lookAhead == 'r' && sql.substring(index).startsWith(OR)) {
+                } else if (c == 'o' && lookAhead == 'r' && sql.substring(index).startsWith(OR)) {
                     index += 2;
                     start = index;
                     inColumnName = true;

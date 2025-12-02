@@ -5,8 +5,8 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.ehcache.serialization;
 
-import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheTransaction;
+import org.devlive.connector.dameng.Scn;
+import org.devlive.connector.dameng.logminer.buffered.ehcache.EhcacheTransaction;
 import org.ehcache.spi.serialization.Serializer;
 
 import java.io.IOException;

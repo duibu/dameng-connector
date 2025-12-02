@@ -7,21 +7,21 @@ package org.devlive.connector.dameng.olr;
 
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
-import io.debezium.connector.oracle.AbstractOracleStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.Scn;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
+import org.devlive.connector.dameng.AbstractDamengStreamingChangeEventSourceMetrics;
+import org.devlive.connector.dameng.Scn;
 
 import java.math.BigInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Oracle Streaming Metrics implementation for the Oracle OpenLogReplicator adapter.
+ * Dameng Streaming Metrics implementation for the Dameng OpenLogReplicator adapter.
  *
  * @author Chris Cranford
  */
 public class OpenLogReplicatorStreamingChangeEventSourceMetrics
-        extends AbstractOracleStreamingChangeEventSourceMetrics
+        extends AbstractDamengStreamingChangeEventSourceMetrics
         implements OpenLogReplicatorStreamingChangeEventSourceMetricsMXBean {
 
     private final AtomicReference<Scn> checkpointScn = new AtomicReference<>(Scn.NULL);

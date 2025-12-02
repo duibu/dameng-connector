@@ -6,7 +6,7 @@
 package org.devlive.connector.dameng.logminer;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.oracle.Scn;
+import org.devlive.connector.dameng.Scn;
 
 /**
  * Identifies when log files could not be found.

@@ -5,7 +5,8 @@
  */
 package org.devlive.connector.dameng.olr.client.payloads;
 
-import io.debezium.connector.oracle.olr.client.PayloadEvent;
+
+import org.devlive.connector.dameng.olr.client.PayloadEvent;
 
 /**
  * Base class for all payload streaming changes.

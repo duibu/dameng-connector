@@ -7,12 +7,8 @@ package org.devlive.connector.dameng.olr.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.proto.OpenLogReplicatorProtocol.RedoRequest;
-import io.debezium.connector.oracle.proto.OpenLogReplicatorProtocol.RedoResponse;
-import io.debezium.connector.oracle.proto.OpenLogReplicatorProtocol.RequestCode;
-import io.debezium.connector.oracle.proto.OpenLogReplicatorProtocol.ResponseCode;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.Scn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +43,7 @@ public class OlrNetworkClient {
      *
      * @param connectorConfig connector configuration
      */
-    public OlrNetworkClient(OracleConnectorConfig connectorConfig) {
+    public OlrNetworkClient(DamengConnectorConfig connectorConfig) {
         this.hostName = connectorConfig.getOpenLogReplicatorHostname();
         this.port = connectorConfig.getOpenLogReplicatorPort();
         this.sourceName = connectorConfig.getOpenLogReplicatorSource();

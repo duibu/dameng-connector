@@ -7,7 +7,7 @@ package org.devlive.connector.dameng.olr.client;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import io.debezium.connector.oracle.olr.client.payloads.*;
+import org.devlive.connector.dameng.olr.client.payloads.*;
 
 /**
  * @author Chris Cranford

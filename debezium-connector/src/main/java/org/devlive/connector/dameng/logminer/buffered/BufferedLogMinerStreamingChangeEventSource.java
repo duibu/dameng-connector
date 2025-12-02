@@ -7,20 +7,6 @@ package org.devlive.connector.dameng.logminer.buffered;
 
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.*;
-import io.debezium.connector.oracle.logminer.*;
-import io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheCacheProvider;
-import io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheTransactionFactory;
-import io.debezium.connector.oracle.logminer.buffered.infinispan.EmbeddedInfinispanCacheProvider;
-import io.debezium.connector.oracle.logminer.buffered.infinispan.InfinispanTransactionFactory;
-import io.debezium.connector.oracle.logminer.buffered.infinispan.RemoteInfinispanCacheProvider;
-import io.debezium.connector.oracle.logminer.buffered.memory.MemoryCacheProvider;
-import io.debezium.connector.oracle.logminer.buffered.memory.MemoryTransactionFactory;
-import io.debezium.connector.oracle.logminer.events.*;
-import io.debezium.connector.oracle.logminer.logwriter.CommitLogWriterFlushStrategy;
-import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
-import io.debezium.connector.oracle.logminer.logwriter.RacCommitLogWriterFlushStrategy;
-import io.debezium.connector.oracle.logminer.logwriter.ReadOnlyLogWriterFlushStrategy;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -30,6 +16,20 @@ import io.debezium.util.Clock;
 import io.debezium.util.Loggings;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Strings;
+import org.devlive.connector.dameng.*;
+import org.devlive.connector.dameng.logminer.*;
+import org.devlive.connector.dameng.logminer.buffered.ehcache.EhcacheCacheProvider;
+import org.devlive.connector.dameng.logminer.buffered.ehcache.EhcacheTransactionFactory;
+import org.devlive.connector.dameng.logminer.buffered.infinispan.EmbeddedInfinispanCacheProvider;
+import org.devlive.connector.dameng.logminer.buffered.infinispan.InfinispanTransactionFactory;
+import org.devlive.connector.dameng.logminer.buffered.infinispan.RemoteInfinispanCacheProvider;
+import org.devlive.connector.dameng.logminer.buffered.memory.MemoryCacheProvider;
+import org.devlive.connector.dameng.logminer.buffered.memory.MemoryTransactionFactory;
+import org.devlive.connector.dameng.logminer.event.*;
+import org.devlive.connector.dameng.logminer.logwriter.CommitLogWriterFlushStrategy;
+import org.devlive.connector.dameng.logminer.logwriter.LogWriterFlushStrategy;
+import org.devlive.connector.dameng.logminer.logwriter.RacCommitLogWriterFlushStrategy;
+import org.devlive.connector.dameng.logminer.logwriter.ReadOnlyLogWriterFlushStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,12 +62,12 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     private Instant lastProcessedScnChangeTime = null;
     private Scn lastProcessedScn = Scn.NULL;
 
-    public BufferedLogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
-                                                      OracleConnection jdbcConnection,
-                                                      EventDispatcher<OraclePartition, TableId> dispatcher,
+    public BufferedLogMinerStreamingChangeEventSource(DamengConnectorConfig connectorConfig,
+                                                      DamengConnection jdbcConnection,
+                                                      EventDispatcher<DamengPartition, TableId> dispatcher,
                                                       ErrorHandler errorHandler,
                                                       Clock clock,
-                                                      OracleDatabaseSchema schema,
+                                                      DamengDatabaseSchema schema,
                                                       Configuration jdbcConfig,
                                                       LogMinerStreamingChangeEventSourceMetrics streamingMetrics) {
         super(connectorConfig, jdbcConnection, dispatcher, errorHandler, clock, schema, jdbcConfig, streamingMetrics);
@@ -173,9 +173,9 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     /**
-     * Resolves the Oracle LGWR buffer flushing strategy.
+     * Resolves the Dameng LGWR buffer flushing strategy.
      *
-     * @return the strategy to be used to flush Oracle's LGWR process, never {@code null}.
+     * @return the strategy to be used to flush Dameng's LGWR process, never {@code null}.
      */
     private LogWriterFlushStrategy resolveFlushStrategy() {
         if (getConfig().isLogMiningReadOnly()) {
@@ -188,7 +188,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     @SuppressWarnings("unchecked")
-    private <T extends Transaction> CacheProvider<T> createCacheProvider(OracleConnectorConfig connectorConfig) {
+    private <T extends Transaction> CacheProvider<T> createCacheProvider(DamengConnectorConfig connectorConfig) {
         return (CacheProvider<T>) switch (connectorConfig.getLogMiningBufferType()) {
             case MEMORY -> new MemoryCacheProvider(connectorConfig);
             case INFINISPAN_EMBEDDED -> new EmbeddedInfinispanCacheProvider(connectorConfig);
@@ -198,7 +198,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     @SuppressWarnings("unchecked")
-    private <T extends Transaction> TransactionFactory<T> createTransactionFactory(OracleConnectorConfig connectorConfig) {
+    private <T extends Transaction> TransactionFactory<T> createTransactionFactory(DamengConnectorConfig connectorConfig) {
         return (TransactionFactory<T>) switch (connectorConfig.getLogMiningBufferType()) {
             case MEMORY -> new MemoryTransactionFactory();
             case INFINISPAN_EMBEDDED, INFINISPAN_REMOTE -> new InfinispanTransactionFactory();
@@ -361,7 +361,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
         int numEvents = (transaction == null) ? 0 : getTransactionEventCount(transaction);
 
-        // There are situations where Oracle records empty transactions in the redo and these
+        // There are situations where Dameng records empty transactions in the redo and these
         // do not make any changes. In such cases, LogMiner fails to reconcile the thread id
         // for the commit, and leaves it assigned to 0. This ultimately leads to the commit
         // recorded for the wrong redo thread. Given that we cannot just "guess" the thread
@@ -596,7 +596,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     protected void handleReplicationMarkerEvent(LogMinerEventRow event) {
         // GoldenGate creates replication markers in the redo logs periodically and these entries can lead to
         // the construction of a transaction in the buffer that never has a COMMIT or ROLLBACK. When this is
-        // done by Oracle, we should automatically discard the transaction from the buffer to avoid the low
+        // done by Dameng, we should automatically discard the transaction from the buffer to avoid the low
         // watermark from advancing safely.
         final String transactionId = event.getTransactionId();
         final Transaction transaction = getTransactionCache().getTransaction(transactionId);
@@ -723,7 +723,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     row.getTransactionId(), row.getScn(), row.getTableId(), row.getRowId());
         }
         else if (row.getTransactionId().endsWith(NO_SEQUENCE_TRX_ID_SUFFIX)) {
-            // This means that Oracle LogMiner found an event that should be undone but its corresponding
+            // This means that Dameng LogMiner found an event that should be undone but its corresponding
             // undo entry was read in a prior mining session and the transaction's sequence could not be
             // resolved.
             final String prefix = row.getTransactionId().substring(0, 8);
@@ -1013,7 +1013,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      * @param retention the retention period, should not be {@code null}
      * @return an optional system change number if one was computed, or empty if the computation failed
      */
-    private Optional<Scn> getLastScnToAbandon(OracleConnection connection, Duration retention) {
+    private Optional<Scn> getLastScnToAbandon(DamengConnection connection, Duration retention) {
         try {
             if (lastProcessedScn.isNull()) {
                 return Optional.empty();
@@ -1136,7 +1136,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             LOGGER.info("Heartbeats are not enabled, offsets will be updated on the next committed transaction");
         }
 
-        LOGGER.info("Successfully dropped transaction '{}' from Oracle LogMiner buffer via manual request", transactionId);
+        LOGGER.info("Successfully dropped transaction '{}' from Dameng LogMiner buffer via manual request", transactionId);
         return true;
     }
 

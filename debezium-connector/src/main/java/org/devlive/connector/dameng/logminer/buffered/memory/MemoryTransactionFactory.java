@@ -5,8 +5,9 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.memory;
 
-import io.debezium.connector.oracle.logminer.buffered.TransactionFactory;
-import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
+
+import org.devlive.connector.dameng.logminer.buffered.TransactionFactory;
+import org.devlive.connector.dameng.logminer.event.LogMinerEventRow;
 
 /**
  * Transaction factory implementation for {@link MemoryTransaction}.

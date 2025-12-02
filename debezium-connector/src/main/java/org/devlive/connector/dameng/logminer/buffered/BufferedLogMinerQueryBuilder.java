@@ -5,9 +5,9 @@
  */
 package org.devlive.connector.dameng.logminer.buffered;
 
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.logminer.AbstractLogMinerQueryBuilder;
 import io.debezium.util.Strings;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.logminer.AbstractLogMinerQueryBuilder;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,7 +28,7 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
     private static final List<Integer> CTE_OPERATION_CODES_LOB = Arrays.asList(1, 2, 3, 9, 10, 11, 27, 29, 34, 68, 70, 71, 91, 92, 93, 255);
     private static final List<Integer> CTE_OPERATION_CODES_NO_LOB = Arrays.asList(1, 2, 3, 27, 34, 255);
 
-    public BufferedLogMinerQueryBuilder(OracleConnectorConfig connectorConfig) {
+    public BufferedLogMinerQueryBuilder(DamengConnectorConfig connectorConfig) {
         super(connectorConfig);
     }
 

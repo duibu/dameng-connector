@@ -5,7 +5,8 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.ehcache.serialization;
 
-import io.debezium.connector.oracle.logminer.events.LobWriteEvent;
+
+import org.devlive.connector.dameng.logminer.event.LobWriteEvent;
 
 import java.io.IOException;
 

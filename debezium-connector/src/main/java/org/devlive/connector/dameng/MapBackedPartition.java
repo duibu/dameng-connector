@@ -7,21 +7,17 @@ import java.io.Serializable;
 import java.util.Map;
 
 @SuppressFBWarnings(value = {"EI_EXPOSE_REP", "EI_EXPOSE_REP2"})
-public class MapBackedPartition
-        implements Partition, Serializable
-{
+public class MapBackedPartition implements Partition, Serializable {
     private static final long serialVersionUID = 1L;
     private final Map<String, String> sourcePartition;
 
     @SuppressWarnings("unchecked")
-    public MapBackedPartition(Map<String, ?> sourcePartition)
-    {
+    public MapBackedPartition(Map<String, ?> sourcePartition) {
         this.sourcePartition = (Map<String, String>) sourcePartition;
     }
 
     @Override
-    public Map<String, String> getSourcePartition()
-    {
+    public Map<String, String> getSourcePartition() {
         return sourcePartition;
     }
 }

@@ -5,10 +5,10 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.infinispan.marshalling;
 
-import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.events.EventType;
-import io.debezium.connector.oracle.logminer.events.XmlWriteEvent;
 import io.debezium.relational.TableId;
+import org.devlive.connector.dameng.Scn;
+import org.devlive.connector.dameng.logminer.event.EventType;
+import org.devlive.connector.dameng.logminer.event.XmlWriteEvent;
 import org.infinispan.protostream.annotations.ProtoAdapter;
 import org.infinispan.protostream.annotations.ProtoFactory;
 import org.infinispan.protostream.annotations.ProtoField;

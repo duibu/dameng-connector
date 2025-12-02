@@ -7,8 +7,10 @@ package org.devlive.connector.dameng.logminer.buffered.infinispan.marshalling;
 
 import io.debezium.relational.TableId;
 import org.devlive.connector.dameng.Scn;
+import org.devlive.connector.dameng.logminer.event.DmlEvent;
 import org.devlive.connector.dameng.logminer.event.EventType;
-import org.devlive.connector.dameng.logminer.valueholder.LogMinerDmlEntryImpl;
+
+import org.devlive.connector.dameng.logminer.parser.LogMinerDmlEntryImpl;
 import org.infinispan.protostream.annotations.ProtoAdapter;
 import org.infinispan.protostream.annotations.ProtoFactory;
 import org.infinispan.protostream.annotations.ProtoField;

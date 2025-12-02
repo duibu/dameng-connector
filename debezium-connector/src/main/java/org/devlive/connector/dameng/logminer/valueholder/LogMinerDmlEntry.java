@@ -11,8 +11,7 @@ import org.devlive.connector.dameng.Scn;
 import java.sql.Timestamp;
 import java.util.List;
 
-public interface LogMinerDmlEntry
-{
+public interface LogMinerDmlEntry {
     /**
      * This getter
      *

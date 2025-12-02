@@ -7,15 +7,15 @@ package org.devlive.connector.dameng.olr;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
-import io.debezium.connector.oracle.OracleConnection;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.relational.Column;
 import io.debezium.util.Strings;
 import oracle.sql.INTERVALDS;
 import oracle.sql.INTERVALYM;
 import oracle.sql.RAW;
 import org.apache.kafka.connect.data.Field;
+import org.devlive.connector.dameng.DamengConnection;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.DamengValueConverters;
 
 import java.math.BigInteger;
 import java.sql.SQLException;
@@ -32,14 +32,14 @@ import java.util.TimeZone;
  * Provides custom value converter behavior specific to OpenLogReplicator.
  *
  * OpenLogReplicator payloads are JSON-based and several value types are not serialized in the same format
- * as we would normally get them from a JDBC result set or an Oracle JDBC driver equivalent type. So, this
+ * as we would normally get them from a JDBC result set or an Dameng JDBC driver equivalent type. So, this
  * converter implementation is meant to pre-transform the values from OpenLogReplicator into a data type
  * that is more appropriate for the column being converted. This avoids polluting the base implementation
  * with any highly-specific OpenLogReplicator details.
  *
  * @author Chris Cranford
  */
-public class OpenLogReplicatorValueConverter extends OracleValueConverters {
+public class OpenLogReplicatorValueConverter extends DamengValueConverters {
 
     private static final String COLUMN_TYPE_DATE = "DATE";
     private static final String COMMA = ",";
@@ -50,7 +50,7 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
     private final Map<Integer, DateTimeFormatter> timestampWithTimeZoneFormatterCache = new HashMap<>();
     private final Map<Integer, DateTimeFormatter> timestampWithLocalTimeZoneFormatterCache = new HashMap<>();
 
-    public OpenLogReplicatorValueConverter(OracleConnectorConfig connectorConfig, OracleConnection connection) {
+    public OpenLogReplicatorValueConverter(DamengConnectorConfig connectorConfig, DamengConnection connection) {
         super(connectorConfig, connection);
     }
 
@@ -179,13 +179,13 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
     }
 
     private DateTimeFormatter getTimestampWithTimeZoneFormatter(Column column) {
-        int precision = column.scale().orElse(6); // Oracle defaults to 6
+        int precision = column.scale().orElse(6); // Dameng defaults to 6
         return timestampWithTimeZoneFormatterCache.computeIfAbsent(precision,
                 k -> createPrecisionBasedFormatter(precision, TIMESTAMP_TIME_ZONE_FORMAT));
     }
 
     private DateTimeFormatter getTimestampWithLocalTimeZoneFormatter(Column column) {
-        int precision = column.scale().orElse(6); // Oracle defaults to 6
+        int precision = column.scale().orElse(6); // Dameng defaults to 6
         return timestampWithLocalTimeZoneFormatterCache.computeIfAbsent(precision,
                 k -> createPrecisionBasedFormatter(precision, TIMESTAMP_LOCAL_TIME_ZONE_FORMAT));
     }

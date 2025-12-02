@@ -23,17 +23,15 @@ import java.util.function.Predicate;
  *
  * @author Chris Cranford
  */
-public class NumberOneToBooleanConverter
-        implements CustomConverter<SchemaBuilder, RelationalColumn>
-{
+public class NumberOneToBooleanConverter implements CustomConverter<SchemaBuilder, RelationalColumn> {
+    
     public static final String SELECTOR_PROPERTY = "selector";
     private static final Logger LOGGER = LoggerFactory.getLogger(NumberOneToBooleanConverter.class);
     private static final Boolean FALLBACK = Boolean.FALSE;
     private Predicate<RelationalColumn> selector = x -> true;
 
     @Override
-    public void configure(Properties props)
-    {
+    public void configure(Properties props) {
         final String selectorConfig = props.getProperty(SELECTOR_PROPERTY);
         if (Strings.isNullOrEmpty(selectorConfig)) {
             return;
@@ -42,8 +40,7 @@ public class NumberOneToBooleanConverter
     }
 
     @Override
-    public void converterFor(RelationalColumn field, ConverterRegistration<SchemaBuilder> registration)
-    {
+    public void converterFor(RelationalColumn field, ConverterRegistration<SchemaBuilder> registration) {
         if (!"NUMBER".equalsIgnoreCase(field.typeName()) || field.length().orElse(-1) != 1 || !selector.test(field)) {
             return;
         }
@@ -52,18 +49,15 @@ public class NumberOneToBooleanConverter
             if (x == null) {
                 if (field.isOptional()) {
                     return null;
-                }
-                else if (field.hasDefaultValue()) {
+                } else if (field.hasDefaultValue()) {
                     return field.defaultValue();
-                }
-                else {
+                } else {
                     return FALLBACK;
                 }
             }
             if (x instanceof Boolean) {
                 return x;
-            }
-            else if (x instanceof Number) {
+            } else if (x instanceof Number) {
                 return ((Number) x).intValue() > 0;
             }
             // else if (x instanceof NUMBER) {
@@ -77,8 +71,7 @@ public class NumberOneToBooleanConverter
             else if (x instanceof String) {
                 try {
                     return Integer.parseInt((String) x) > 0;
-                }
-                catch (NumberFormatException e) {
+                } catch (NumberFormatException e) {
                     return Boolean.parseBoolean((String) x);
                 }
             }

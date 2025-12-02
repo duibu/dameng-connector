@@ -5,8 +5,9 @@
  */
 package org.devlive.connector.dameng.logminer.parser;
 
-import io.debezium.connector.oracle.logminer.buffered.infinispan.marshalling.VisibleForMarshalling;
-import io.debezium.connector.oracle.logminer.events.EventType;
+
+import org.devlive.connector.dameng.logminer.buffered.infinispan.marshalling.VisibleForMarshalling;
+import org.devlive.connector.dameng.logminer.event.EventType;
 
 import java.util.Arrays;
 import java.util.Objects;

@@ -8,7 +8,7 @@ package org.devlive.connector.dameng.outbox;
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.connector.oracle.Module;
+import org.devlive.connector.dameng.Module;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition;
 import io.debezium.transforms.outbox.EventRouterConfigurationProvider;
 

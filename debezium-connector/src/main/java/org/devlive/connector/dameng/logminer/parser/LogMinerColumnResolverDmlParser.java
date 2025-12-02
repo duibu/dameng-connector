@@ -6,10 +6,10 @@
 package org.devlive.connector.dameng.logminer.parser;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import org.devlive.connector.dameng.DamengConnectorConfig;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,7 +28,7 @@ public class LogMinerColumnResolverDmlParser extends LogMinerDmlParser {
 
     private Map<TableId, Map<String, Integer>> tableColumnPositionCache = new HashMap<>();
 
-    public LogMinerColumnResolverDmlParser(OracleConnectorConfig connectorConfig) {
+    public LogMinerColumnResolverDmlParser(DamengConnectorConfig connectorConfig) {
         super(connectorConfig);
     }
 

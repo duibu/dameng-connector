@@ -18,9 +18,7 @@ import java.sql.Types;
  * This class parses column definitions of Oracle statements.
  */
 @SuppressFBWarnings(value = {"DM_BOXED_PRIMITIVE_FOR_PARSING"})
-public class ColumnDefinitionParserListener
-        extends BaseParserListener
-{
+public class ColumnDefinitionParserListener extends BaseParserListener {
     private final DataTypeResolver dataTypeResolver;
     private final TableEditor tableEditor;
     private ColumnEditor columnEditor;
@@ -28,33 +26,28 @@ public class ColumnDefinitionParserListener
     ColumnDefinitionParserListener(
             final TableEditor tableEditor,
             final ColumnEditor columnEditor,
-            final DataTypeResolver dataTypeResolver)
-    {
+            final DataTypeResolver dataTypeResolver) {
         this.dataTypeResolver = dataTypeResolver;
         this.tableEditor = tableEditor;
         this.columnEditor = columnEditor;
     }
 
-    void setColumnEditor(ColumnEditor columnEditor)
-    {
+    void setColumnEditor(ColumnEditor columnEditor) {
         this.columnEditor = columnEditor;
     }
 
-    Column getColumn()
-    {
+    Column getColumn() {
         return columnEditor.create();
     }
 
     @Override
-    public void enterColumn_definition(PlSqlParser.Column_definitionContext ctx)
-    {
+    public void enterColumn_definition(PlSqlParser.Column_definitionContext ctx) {
         resolveColumnDataType(ctx);
         super.enterColumn_definition(ctx);
     }
 
     @Override
-    public void enterPrimary_key_clause(PlSqlParser.Primary_key_clauseContext ctx)
-    {
+    public void enterPrimary_key_clause(PlSqlParser.Primary_key_clauseContext ctx) {
         // this rule will be parsed only if no primary key is set in a table
         // otherwise the statement can't be executed due to multiple primary key error
         columnEditor.optional(false);
@@ -64,8 +57,7 @@ public class ColumnDefinitionParserListener
     }
 
     // todo use dataTypeResolver instead
-    private void resolveColumnDataType(PlSqlParser.Column_definitionContext ctx)
-    {
+    private void resolveColumnDataType(PlSqlParser.Column_definitionContext ctx) {
         columnEditor.name(getColumnName(ctx.column_name()));
 
         PlSqlParser.Precision_partContext precisionPart = null;
@@ -78,8 +70,7 @@ public class ColumnDefinitionParserListener
                     && "\"MDSYS\".\"SDO_GEOMETRY\"".equalsIgnoreCase(ctx.type_name().getText())) {
                 columnEditor.jdbcType(Types.STRUCT).type("MDSYS.SDO_GEOMETRY");
             }
-        }
-        else if (ctx.datatype().native_datatype_element() != null) {
+        } else if (ctx.datatype().native_datatype_element() != null) {
             if (ctx.datatype().native_datatype_element().INT() != null
                     || ctx.datatype().native_datatype_element().INTEGER() != null
                     || ctx.datatype().native_datatype_element().SMALLINT() != null
@@ -90,35 +81,29 @@ public class ColumnDefinitionParserListener
 
                 if (precisionPart == null) {
                     columnEditor.length(38).scale(0);
-                }
-                else {
+                } else {
                     setPrecision(precisionPart, columnEditor);
                     setScale(precisionPart, columnEditor);
                 }
-            }
-            else if (ctx.datatype().native_datatype_element().DATE() != null) {
+            } else if (ctx.datatype().native_datatype_element().DATE() != null) {
                 // JDBC driver reports type as timestamp but name DATE
                 columnEditor.jdbcType(Types.TIMESTAMP).type("DATE");
-            }
-            else if (ctx.datatype().native_datatype_element().TIMESTAMP() != null) {
+            } else if (ctx.datatype().native_datatype_element().TIMESTAMP() != null) {
                 if (ctx.datatype().WITH() != null
                         && ctx.datatype().TIME() != null
                         && ctx.datatype().ZONE() != null) {
                     if (ctx.datatype().LOCAL() != null) {
                         columnEditor.jdbcType(Types.TIMESTAMP).type("TIMESTAMP WITH LOCAL TIME ZONE");
-                    }
-                    else {
+                    } else {
                         columnEditor.jdbcType(Types.TIMESTAMP).type("TIMESTAMP WITH TIME ZONE");
                     }
-                }
-                else {
+                } else {
                     columnEditor.jdbcType(Types.TIMESTAMP).type("TIMESTAMP");
                 }
 
                 if (precisionPart == null) {
                     columnEditor.length(6);
-                }
-                else {
+                } else {
                     setPrecision(precisionPart, columnEditor);
                 }
             }
@@ -129,31 +114,24 @@ public class ColumnDefinitionParserListener
 
                 if (precisionPart == null) {
                     columnEditor.length(getVarCharDefaultLength());
-                }
-                else {
+                } else {
                     setPrecision(precisionPart, columnEditor);
                 }
-            }
-            else if (ctx.datatype().native_datatype_element().NVARCHAR2() != null) {
+            } else if (ctx.datatype().native_datatype_element().NVARCHAR2() != null) {
                 columnEditor.jdbcType(Types.NVARCHAR).type("NVARCHAR2");
 
                 if (precisionPart == null) {
                     columnEditor.length(getVarCharDefaultLength());
-                }
-                else {
+                } else {
                     setPrecision(precisionPart, columnEditor);
                 }
-            }
-            else if (ctx.datatype().native_datatype_element().CHAR() != null) {
+            } else if (ctx.datatype().native_datatype_element().CHAR() != null) {
                 columnEditor.jdbcType(Types.CHAR).type("CHAR").length(1);
-            }
-            else if (ctx.datatype().native_datatype_element().NCHAR() != null) {
+            } else if (ctx.datatype().native_datatype_element().NCHAR() != null) {
                 columnEditor.jdbcType(Types.NCHAR).type("NCHAR").length(1);
-            }
-            else if (ctx.datatype().native_datatype_element().BINARY_FLOAT() != null) {
+            } else if (ctx.datatype().native_datatype_element().BINARY_FLOAT() != null) {
                 columnEditor.jdbcType(Types.FLOAT).type("BINARY_FLOAT");
-            }
-            else if (ctx.datatype().native_datatype_element().BINARY_DOUBLE() != null) {
+            } else if (ctx.datatype().native_datatype_element().BINARY_DOUBLE() != null) {
                 columnEditor.jdbcType(Types.DOUBLE).type("BINARY_DOUBLE");
             }
             // PRECISION keyword is mandatory
@@ -167,38 +145,31 @@ public class ColumnDefinitionParserListener
                 if (precisionPart != null) {
                     setPrecision(precisionPart, columnEditor);
                 }
-            }
-            else if (ctx.datatype().native_datatype_element().REAL() != null) {
+            } else if (ctx.datatype().native_datatype_element().REAL() != null) {
                 columnEditor
                         .jdbcType(Types.FLOAT)
                         .type("FLOAT")
                         // TODO float's precision is about bits not decimal digits; should be ok for now to
                         // over-size
                         .length(63);
-            }
-            else if (ctx.datatype().native_datatype_element().NUMBER() != null) {
+            } else if (ctx.datatype().native_datatype_element().NUMBER() != null) {
                 columnEditor.jdbcType(Types.NUMERIC).type("NUMBER");
 
                 if (precisionPart == null) {
                     columnEditor.length(38);
-                }
-                else {
+                } else {
                     setPrecision(precisionPart, columnEditor);
                     setScale(precisionPart, columnEditor);
                 }
-            }
-            else if (ctx.datatype().native_datatype_element().BLOB() != null) {
+            } else if (ctx.datatype().native_datatype_element().BLOB() != null) {
                 columnEditor.jdbcType(Types.BLOB).type("BLOB");
-            }
-            else if (ctx.datatype().native_datatype_element().CLOB() != null) {
+            } else if (ctx.datatype().native_datatype_element().CLOB() != null) {
                 columnEditor.jdbcType(Types.CLOB).type("CLOB");
-            }
-            else {
+            } else {
                 throw new IllegalArgumentException(
                         "Unsupported column type: " + ctx.datatype().native_datatype_element().getText());
             }
-        }
-        else if (ctx.datatype().INTERVAL() != null
+        } else if (ctx.datatype().INTERVAL() != null
                 && ctx.datatype().YEAR() != null
                 && ctx.datatype().TO() != null
                 && ctx.datatype().MONTH() != null) {
@@ -206,8 +177,7 @@ public class ColumnDefinitionParserListener
             if (!ctx.datatype().expression().isEmpty()) {
                 columnEditor.length(Integer.valueOf((ctx.datatype().expression(0).getText())));
             }
-        }
-        else if (ctx.datatype().INTERVAL() != null
+        } else if (ctx.datatype().INTERVAL() != null
                 && ctx.datatype().DAY() != null
                 && ctx.datatype().TO() != null
                 && ctx.datatype().SECOND() != null) {
@@ -215,16 +185,14 @@ public class ColumnDefinitionParserListener
             for (final PlSqlParser.ExpressionContext e : ctx.datatype().expression()) {
                 if (e.getSourceInterval().startsAfter(ctx.datatype().TO().getSourceInterval())) {
                     columnEditor.scale(Integer.valueOf(e.getText()));
-                }
-                else {
+                } else {
                     columnEditor.length(Integer.valueOf(e.getText()));
                 }
             }
             if (!ctx.datatype().expression().isEmpty()) {
                 columnEditor.length(Integer.valueOf((ctx.datatype().expression(0).getText())));
             }
-        }
-        else {
+        } else {
             throw new IllegalArgumentException("Unsupported column type: " + ctx.datatype().getText());
         }
 
@@ -239,29 +207,24 @@ public class ColumnDefinitionParserListener
         columnEditor.optional(!hasNotNullConstraint);
     }
 
-    private int getVarCharDefaultLength()
-    {
+    private int getVarCharDefaultLength() {
         // TODO replace with value from select name, value from v$parameter where
         // name='max_string_size';
         return 4000;
     }
 
     private void setPrecision(
-            PlSqlParser.Precision_partContext precisionPart, ColumnEditor columnEditor)
-    {
+            PlSqlParser.Precision_partContext precisionPart, ColumnEditor columnEditor) {
         columnEditor.length(Integer.valueOf(precisionPart.numeric(0).getText()));
     }
 
     private void setScale(
-            PlSqlParser.Precision_partContext precisionPart, ColumnEditor columnEditor)
-    {
+            PlSqlParser.Precision_partContext precisionPart, ColumnEditor columnEditor) {
         if (precisionPart.numeric().size() > 1) {
             columnEditor.scale(Integer.valueOf(precisionPart.numeric(1).getText()));
-        }
-        else if (precisionPart.numeric_negative() != null) {
+        } else if (precisionPart.numeric_negative() != null) {
             columnEditor.scale(Integer.valueOf(precisionPart.numeric_negative().getText()));
-        }
-        else {
+        } else {
             columnEditor.scale(0);
         }
     }

@@ -5,8 +5,8 @@
  */
 package org.devlive.connector.dameng.logminer;
 
-import io.debezium.connector.oracle.OracleOffsetContext;
-import io.debezium.connector.oracle.Scn;
+import org.devlive.connector.dameng.DamengOffsetContext;
+import org.devlive.connector.dameng.Scn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,14 +23,14 @@ public class OffsetActivityMonitor {
     private static final Logger LOGGER = LoggerFactory.getLogger(OffsetActivityMonitor.class);
 
     private final int staleMaxIterations;
-    private final OracleOffsetContext offsetContext;
+    private final DamengOffsetContext offsetContext;
     private final LogMinerStreamingChangeEventSourceMetrics metrics;
 
     private int unchangedScnCount;
     private Scn previousOffsetScn = Scn.NULL;
     private Map<Integer, Scn> previousCommitScns = new HashMap<>();
 
-    public OffsetActivityMonitor(int staleMaxIterations, OracleOffsetContext offsetContext, LogMinerStreamingChangeEventSourceMetrics metrics) {
+    public OffsetActivityMonitor(int staleMaxIterations, DamengOffsetContext offsetContext, LogMinerStreamingChangeEventSourceMetrics metrics) {
         this.staleMaxIterations = staleMaxIterations;
         this.offsetContext = offsetContext;
         this.metrics = metrics;

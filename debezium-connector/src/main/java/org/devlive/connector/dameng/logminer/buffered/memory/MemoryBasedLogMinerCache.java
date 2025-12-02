@@ -5,7 +5,8 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.memory;
 
-import io.debezium.connector.oracle.logminer.buffered.LogMinerCache;
+
+import org.devlive.connector.dameng.logminer.buffered.LogMinerCache;
 
 import java.util.HashMap;
 import java.util.Map;

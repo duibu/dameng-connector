@@ -17,9 +17,7 @@ import org.devlive.connector.dameng.antlr.DamengDdlParser;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class CreateTableParserListener
-        extends BaseParserListener
-{
+public class CreateTableParserListener extends BaseParserListener {
     private final List<ParseTreeListener> listeners;
     private final String catalogName;
     private final String schemaName;
@@ -28,8 +26,7 @@ public class CreateTableParserListener
     private ColumnDefinitionParserListener columnDefinitionParserListener;
 
     CreateTableParserListener(final String catalogName, final String schemaName, final DamengDdlParser parser,
-            final List<ParseTreeListener> listeners)
-    {
+                              final List<ParseTreeListener> listeners) {
         this.catalogName = catalogName;
         this.schemaName = schemaName;
         this.parser = parser;
@@ -37,8 +34,7 @@ public class CreateTableParserListener
     }
 
     @Override
-    public void enterCreate_table(PlSqlParser.Create_tableContext ctx)
-    {
+    public void enterCreate_table(PlSqlParser.Create_tableContext ctx) {
         if (ctx.relational_table() == null) {
             throw new IllegalArgumentException("Only relational tables are supported");
         }
@@ -48,8 +44,7 @@ public class CreateTableParserListener
     }
 
     @Override
-    public void exitCreate_table(PlSqlParser.Create_tableContext ctx)
-    {
+    public void exitCreate_table(PlSqlParser.Create_tableContext ctx) {
         Table table = getTable();
         if (table == null) {
             throw new IllegalStateException("Table not found");
@@ -66,8 +61,7 @@ public class CreateTableParserListener
     }
 
     @Override
-    public void enterColumn_definition(PlSqlParser.Column_definitionContext ctx)
-    {
+    public void enterColumn_definition(PlSqlParser.Column_definitionContext ctx) {
         parser.runIfNotNull(() -> {
             String columnName = ParserUtils.stripeQuotes(getColumnName(ctx.column_name()));
             ColumnEditor columnEditor = Column.editor().name(columnName);
@@ -76,8 +70,7 @@ public class CreateTableParserListener
                 // todo: this explicit call is for the first column, should it be fixed?
                 columnDefinitionParserListener.enterColumn_definition(ctx);
                 listeners.add(columnDefinitionParserListener);
-            }
-            else {
+            } else {
                 columnDefinitionParserListener.setColumnEditor(columnEditor);
             }
         }, tableEditor);
@@ -85,16 +78,14 @@ public class CreateTableParserListener
     }
 
     @Override
-    public void exitColumn_definition(PlSqlParser.Column_definitionContext ctx)
-    {
+    public void exitColumn_definition(PlSqlParser.Column_definitionContext ctx) {
         parser.runIfNotNull(() -> tableEditor.addColumn(columnDefinitionParserListener.getColumn()),
                 tableEditor, columnDefinitionParserListener);
         super.exitColumn_definition(ctx);
     }
 
     @Override
-    public void exitOut_of_line_constraint(PlSqlParser.Out_of_line_constraintContext ctx)
-    {
+    public void exitOut_of_line_constraint(PlSqlParser.Out_of_line_constraintContext ctx) {
         if (ctx.PRIMARY() != null) {
             List<String> pkColumnNames = ctx.column_name().stream()
                     .map(ParserUtils::getColumnName)
@@ -105,8 +96,7 @@ public class CreateTableParserListener
         super.exitOut_of_line_constraint(ctx);
     }
 
-    private Table getTable()
-    {
+    private Table getTable() {
         return tableEditor != null ? tableEditor.create() : null;
     }
 }

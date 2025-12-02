@@ -5,17 +5,18 @@
  */
 package org.devlive.connector.dameng.olr;
 
-import io.debezium.connector.oracle.OracleCommonStreamingChangeEventSourceMetricsMXBean;
+
+import org.devlive.connector.dameng.DamengCommonStreamingChangeEventSourceMetricsMXBean;
 
 import java.math.BigInteger;
 
 /**
- * Oracle Streaming Metrics for OpenLogReplicator.
+ * Dameng Streaming Metrics for OpenLogReplicator.
  *
  * @author Chris Cranford
  */
 public interface OpenLogReplicatorStreamingChangeEventSourceMetricsMXBean
-        extends OracleCommonStreamingChangeEventSourceMetricsMXBean {
+        extends DamengCommonStreamingChangeEventSourceMetricsMXBean {
 
     /**
      * @return checkpoint scn where the connector resumes on restart

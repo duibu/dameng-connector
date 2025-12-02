@@ -5,37 +5,37 @@
  */
 package org.devlive.connector.dameng.xstream;
 
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleOffsetContext;
-import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.SourceInfo;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.DamengOffsetContext;
+import org.devlive.connector.dameng.Scn;
+import org.devlive.connector.dameng.SourceInfo;
 
 import java.util.Map;
 
 /**
- * The {@link OffsetContext} loader implementation for the Oracle XStream adapter
+ * The {@link OffsetContext} loader implementation for the Dameng XStream adapter
  *
  * @author Chris Cranford
  */
-public class XStreamDamengOffsetContextLoader implements OffsetContext.Loader<OracleOffsetContext> {
+public class XStreamDamengOffsetContextLoader implements OffsetContext.Loader<DamengOffsetContext> {
 
-    private final OracleConnectorConfig connectorConfig;
+    private final DamengConnectorConfig connectorConfig;
 
-    public XStreamDamengOffsetContextLoader(OracleConnectorConfig connectorConfig) {
+    public XStreamDamengOffsetContextLoader(DamengConnectorConfig connectorConfig) {
         this.connectorConfig = connectorConfig;
     }
 
     @Override
-    public OracleOffsetContext load(Map<String, ?> offset) {
-        return OracleOffsetContext.create()
+    public DamengOffsetContext load(Map<String, ?> offset) {
+        return DamengOffsetContext.create()
                 .logicalName(connectorConfig)
                 .scn(resolveScn(offset))
                 .lcrPosition(loadLcrPosition(offset))
-                .snapshotScn(OracleOffsetContext.loadSnapshotScn(offset))
-                .snapshotPendingTransactions(OracleOffsetContext.loadSnapshotPendingTransactions(offset))
+                .snapshotScn(DamengOffsetContext.loadSnapshotScn(offset))
+                .snapshotPendingTransactions(DamengOffsetContext.loadSnapshotPendingTransactions(offset))
                 .snapshot(loadSnapshot(offset).orElse(null))
                 .snapshotCompleted(loadSnapshotCompleted(offset))
                 .transactionContext(TransactionContext.load(offset))
@@ -47,7 +47,7 @@ public class XStreamDamengOffsetContextLoader implements OffsetContext.Loader<Or
         final String lcrPosition = loadLcrPosition(offset);
         return lcrPosition != null
                 ? LcrPosition.valueOf(lcrPosition).getScn()
-                : OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
+                : DamengOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
     }
 
     private String loadLcrPosition(Map<String, ?> offset) {

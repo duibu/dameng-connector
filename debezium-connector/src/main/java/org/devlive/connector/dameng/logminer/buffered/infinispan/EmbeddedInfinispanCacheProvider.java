@@ -7,10 +7,11 @@ package org.devlive.connector.dameng.logminer.buffered.infinispan;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Field;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.logminer.buffered.AbstractCacheProvider;
-import io.debezium.connector.oracle.logminer.buffered.LogMinerCache;
-import io.debezium.connector.oracle.logminer.buffered.LogMinerTransactionCache;
+import org.apache.kafka.connect.runtime.ConnectorConfig;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.logminer.buffered.AbstractCacheProvider;
+import org.devlive.connector.dameng.logminer.buffered.LogMinerCache;
+import org.devlive.connector.dameng.logminer.buffered.LogMinerTransactionCache;
 import org.infinispan.commons.api.BasicCache;
 import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
@@ -26,7 +27,8 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.Objects;
 
-import static io.debezium.connector.oracle.OracleConnectorConfig.*;
+import static org.devlive.connector.dameng.DamengConnectorConfig.*;
+
 
 /**
  * Provides access to various transaction-focused caches to store transaction details in Infinispan
@@ -44,7 +46,7 @@ public class EmbeddedInfinispanCacheProvider extends AbstractCacheProvider<Infin
     private final InfinispanLogMinerCache<String, String> processedTransactionsCache;
     private final InfinispanLogMinerCache<String, String> schemaChangesCache;
 
-    public EmbeddedInfinispanCacheProvider(OracleConnectorConfig connectorConfig) {
+    public EmbeddedInfinispanCacheProvider(DamengConnectorConfig connectorConfig) {
         LOGGER.info("Using Infinispan in embedded mode to buffer transactions");
 
         this.dropBufferOnStop = connectorConfig.isLogMiningBufferDropOnStop();
@@ -90,23 +92,23 @@ public class EmbeddedInfinispanCacheProvider extends AbstractCacheProvider<Infin
         cacheManager.close();
     }
 
-    private InfinispanLogMinerTransactionCache createTransactionCache(OracleConnectorConfig connectorConfig) {
+    private InfinispanLogMinerTransactionCache createTransactionCache(DamengConnectorConfig connectorConfig) {
         return new InfinispanLogMinerTransactionCache(
                 createCache(TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS),
                 createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS));
     }
 
-    private InfinispanLogMinerCache<String, String> createProcessedTransactionsCache(OracleConnectorConfig connectorConfig) {
+    private InfinispanLogMinerCache<String, String> createProcessedTransactionsCache(DamengConnectorConfig connectorConfig) {
         return new InfinispanLogMinerCache<>(
                 createCache(PROCESSED_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS));
     }
 
-    private InfinispanLogMinerCache<String, String> createSchemaChangesCache(OracleConnectorConfig connectorConfig) {
+    private InfinispanLogMinerCache<String, String> createSchemaChangesCache(DamengConnectorConfig connectorConfig) {
         return new InfinispanLogMinerCache<>(
                 createCache(SCHEMA_CHANGES_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES));
     }
 
-    private <K, V> BasicCache<K, V> createCache(String cacheName, OracleConnectorConfig connectorConfig, Field field) {
+    private <K, V> BasicCache<K, V> createCache(String cacheName, DamengConnectorConfig connectorConfig, Field field) {
         Objects.requireNonNull(cacheName);
 
         final String cacheConfiguration = connectorConfig.getConfig().getString(field);
@@ -117,7 +119,7 @@ public class EmbeddedInfinispanCacheProvider extends AbstractCacheProvider<Infin
         return cacheManager.getCache(cacheName);
     }
 
-    private static GlobalConfiguration createGlobalConfig(OracleConnectorConfig connectorConfig) {
+    private static GlobalConfiguration createGlobalConfig(DamengConnectorConfig connectorConfig) {
         final String globalCacheConfiguration = connectorConfig.getLogMiningInifispanGlobalConfiguration();
         if (globalCacheConfiguration == null) {
             // if no configuration provided, use the default

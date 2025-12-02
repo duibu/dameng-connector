@@ -7,11 +7,11 @@ package org.devlive.connector.dameng.logminer.buffered.ehcache;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.logminer.buffered.AbstractCacheProvider;
-import io.debezium.connector.oracle.logminer.buffered.LogMinerCache;
-import io.debezium.connector.oracle.logminer.buffered.LogMinerTransactionCache;
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.logminer.buffered.AbstractCacheProvider;
+import org.devlive.connector.dameng.logminer.buffered.LogMinerCache;
+import org.devlive.connector.dameng.logminer.buffered.LogMinerTransactionCache;
+import org.devlive.connector.dameng.logminer.event.LogMinerEvent;
 import org.ehcache.Cache;
 import org.ehcache.CacheManager;
 import org.ehcache.config.builders.CacheManagerBuilder;
@@ -33,7 +33,8 @@ import java.io.StringReader;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static io.debezium.connector.oracle.OracleConnectorConfig.*;
+import static org.devlive.connector.dameng.DamengConnectorConfig.*;
+
 
 /**
  * Provides access to various transaction-focused caches to store transaction details in Ehcache
@@ -51,7 +52,7 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
     private final EhcacheLogMinerCache<String, String> processedTransactionsCache;
     private final EhcacheLogMinerCache<String, String> schemaChangesCache;
 
-    public EhcacheCacheProvider(OracleConnectorConfig connectorConfig) {
+    public EhcacheCacheProvider(DamengConnectorConfig connectorConfig) {
         LOGGER.info("Using Ehcache provider to buffer transactions");
 
         this.dropBufferOnStop = connectorConfig.isLogMiningBufferDropOnStop();
@@ -99,7 +100,7 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
         }
     }
 
-    private CacheManager createCacheManager(OracleConnectorConfig connectorConfig) {
+    private CacheManager createCacheManager(DamengConnectorConfig connectorConfig) {
         try {
             final Configuration ehcacheConfig = connectorConfig.getLogMiningEhcacheConfiguration();
 

@@ -6,20 +6,20 @@
 package org.devlive.connector.dameng.snapshot.lock;
 
 import io.debezium.annotation.ConnectorSpecific;
-import io.debezium.connector.oracle.OracleConnector;
-import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.snapshot.spi.SnapshotLock;
+import org.devlive.connector.dameng.DamengConnector;
+import org.devlive.connector.dameng.DamengConnectorConfig;
 
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 
-@ConnectorSpecific(connector = OracleConnector.class)
+@ConnectorSpecific(connector = DamengConnector.class)
 public class SharedSnapshotLock implements SnapshotLock {
 
     @Override
     public String name() {
-        return OracleConnectorConfig.SnapshotLockingMode.SHARED.getValue();
+        return DamengConnectorConfig.SnapshotLockingMode.SHARED.getValue();
     }
 
     @Override

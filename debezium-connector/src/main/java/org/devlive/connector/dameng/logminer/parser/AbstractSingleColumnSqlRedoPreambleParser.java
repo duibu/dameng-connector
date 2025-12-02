@@ -5,10 +5,10 @@
  */
 package org.devlive.connector.dameng.logminer.parser;
 
-import io.debezium.connector.oracle.logminer.LogMinerHelper;
 import io.debezium.relational.Table;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Strings;
+import org.devlive.connector.dameng.logminer.LogMinerHelper;
 
 import java.util.Objects;
 import java.util.function.Consumer;

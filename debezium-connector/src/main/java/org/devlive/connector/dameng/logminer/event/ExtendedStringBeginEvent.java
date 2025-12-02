@@ -5,10 +5,10 @@
  */
 package org.devlive.connector.dameng.logminer.event;
 
-import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
-import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
 import io.debezium.relational.TableId;
+import org.devlive.connector.dameng.Scn;
+import org.devlive.connector.dameng.logminer.parser.LogMinerDmlEntry;
+import org.devlive.connector.dameng.logminer.parser.LogMinerDmlEntryImpl;
 
 import java.time.Instant;
 

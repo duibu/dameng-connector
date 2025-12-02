@@ -6,19 +6,19 @@
 package org.devlive.connector.dameng.logminer.unbuffered;
 
 import io.debezium.common.annotation.Incubating;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.logminer.AbstractLogMinerQueryBuilder;
 import io.debezium.util.Strings;
+import org.devlive.connector.dameng.DamengConnectorConfig;
+import org.devlive.connector.dameng.logminer.AbstractLogMinerQueryBuilder;
 
 /**
- * Builder that creates an Oracle LogMiner query for the unbuffered adapter implementation.
+ * Builder that creates an Dameng LogMiner query for the unbuffered adapter implementation.
  *
  * @author Chris Cranford
  */
 @Incubating
 public class UnbufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
 
-    public UnbufferedLogMinerQueryBuilder(OracleConnectorConfig connectorConfig) {
+    public UnbufferedLogMinerQueryBuilder(DamengConnectorConfig connectorConfig) {
         super(connectorConfig);
     }
 

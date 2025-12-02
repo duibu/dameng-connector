@@ -6,6 +6,8 @@
 package org.devlive.connector.dameng.logminer.buffered;
 
 
+import org.devlive.connector.dameng.logminer.event.LogMinerEventRow;
+
 /**
  * A factory for creating specific types of {@link Transaction} instances.
  *

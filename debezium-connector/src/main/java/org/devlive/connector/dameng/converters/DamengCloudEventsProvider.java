@@ -5,11 +5,11 @@
  */
 package org.devlive.connector.dameng.converters;
 
-import io.debezium.connector.oracle.Module;
 import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.CloudEventsProvider;
 import io.debezium.converters.spi.SerializerType;
+import org.devlive.connector.dameng.Module;
 
 /**
  * An implementation of {@link CloudEventsProvider} for Oracle.

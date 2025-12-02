@@ -5,7 +5,7 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.ehcache.serialization;
 
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
+import org.devlive.connector.dameng.logminer.event.LogMinerEvent;
 import org.ehcache.spi.serialization.Serializer;
 import org.ehcache.spi.serialization.SerializerException;
 

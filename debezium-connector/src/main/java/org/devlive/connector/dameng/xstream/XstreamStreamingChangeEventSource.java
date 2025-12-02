@@ -6,8 +6,6 @@
 package org.devlive.connector.dameng.xstream;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.oracle.*;
-import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -16,10 +14,7 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
-import oracle.sql.NUMBER;
-import oracle.streams.StreamsException;
-import oracle.streams.XStreamOut;
-import oracle.streams.XStreamUtility;
+import org.devlive.connector.dameng.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,24 +24,24 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * A {@link StreamingChangeEventSource} based on Oracle's XStream API. The XStream event handler loop is executed in a
+ * A {@link StreamingChangeEventSource} based on Dameng's XStream API. The XStream event handler loop is executed in a
  * separate executor.
  *
  * @author Gunnar Morling
  */
-public class XstreamStreamingChangeEventSource implements StreamingChangeEventSource<OraclePartition, OracleOffsetContext> {
+public class XstreamStreamingChangeEventSource implements StreamingChangeEventSource<DamengPartition, DamengOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(XstreamStreamingChangeEventSource.class);
 
     private static final int DEFAULT_MAX_ATTACH_RETRIES = 10;
     private static final int DEFAULT_MAX_ATTACH_RETRY_DELAY_SECONDS = 10;
 
-    private final OracleConnectorConfig connectorConfig;
-    private final OracleConnection jdbcConnection;
-    private final EventDispatcher<OraclePartition, TableId> dispatcher;
+    private final DamengConnectorConfig connectorConfig;
+    private final DamengConnection jdbcConnection;
+    private final EventDispatcher<DamengPartition, TableId> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
-    private final OracleDatabaseSchema schema;
+    private final DamengDatabaseSchema schema;
     private final XStreamStreamingChangeEventSourceMetrics streamingMetrics;
     private final String xStreamServerName;
     private volatile XStreamOut xsOut;
@@ -56,14 +51,14 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
      * When the last offset is committed its value is passed to the XStream thread and a watermark is
      * set to signal which events were safely processed.
      * This is important as setting watermark in a concurrent thread can lead to a deadlock due to an
-     * internal Oracle code locking.
+     * internal Dameng code locking.
      */
     private final AtomicReference<PositionAndScn> lcrMessage = new AtomicReference<>();
-    private OracleOffsetContext effectiveOffset;
+    private DamengOffsetContext effectiveOffset;
 
-    public XstreamStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection jdbcConnection,
-                                             EventDispatcher<OraclePartition, TableId> dispatcher, ErrorHandler errorHandler,
-                                             Clock clock, OracleDatabaseSchema schema,
+    public XstreamStreamingChangeEventSource(DamengConnectorConfig connectorConfig, DamengConnection jdbcConnection,
+                                             EventDispatcher<DamengPartition, TableId> dispatcher, ErrorHandler errorHandler,
+                                             Clock clock, DamengDatabaseSchema schema,
                                              XStreamStreamingChangeEventSourceMetrics streamingMetrics) {
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
@@ -77,19 +72,19 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     @Override
-    public void init(OracleOffsetContext offsetContext) throws InterruptedException {
+    public void init(DamengOffsetContext offsetContext) throws InterruptedException {
         this.effectiveOffset = offsetContext == null ? emptyContext() : offsetContext;
     }
 
-    private OracleOffsetContext emptyContext() {
-        return OracleOffsetContext.create().logicalName(connectorConfig)
+    private DamengOffsetContext emptyContext() {
+        return DamengOffsetContext.create().logicalName(connectorConfig)
                 .snapshotPendingTransactions(Collections.emptyMap())
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>()).build();
     }
 
     @Override
-    public void execute(ChangeEventSourceContext context, OraclePartition partition, OracleOffsetContext offsetContext)
+    public void execute(ChangeEventSourceContext context, DamengPartition partition, DamengOffsetContext offsetContext)
             throws InterruptedException {
 
         this.effectiveOffset = offsetContext;
@@ -99,7 +94,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                 TableNameCaseSensitivity.INSENSITIVE.equals(connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection)),
                 this, streamingMetrics);
 
-        try (OracleConnection xsConnection = connectAndAttachWithRetries(jdbcConnection.config(), getStartPosition(offsetContext))) {
+        try (DamengConnection xsConnection = connectAndAttachWithRetries(jdbcConnection.config(), getStartPosition(offsetContext))) {
             try {
                 // 2. receive events while running
                 while (context.isRunning()) {
@@ -137,9 +132,9 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     @Override
     public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
         if (xsOut != null) {
-            LOGGER.debug("Sending message to request recording of offsets to Oracle");
+            LOGGER.debug("Sending message to request recording of offsets to Dameng");
             final LcrPosition lcrPosition = LcrPosition.valueOf((String) offset.get(SourceInfo.LCR_POSITION_KEY));
-            final Scn scn = OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
+            final Scn scn = DamengOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
             // We can safely overwrite the message even if it was not processed. The watermarked will be set to the highest
             // (last) delivered value in a single step instead of incrementally
             sendPublishedPosition(lcrPosition, scn);
@@ -147,11 +142,11 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     @Override
-    public OracleOffsetContext getOffsetContext() {
+    public DamengOffsetContext getOffsetContext() {
         return effectiveOffset;
     }
 
-    private byte[] getStartPosition(OracleOffsetContext offsetContext) {
+    private byte[] getStartPosition(DamengOffsetContext offsetContext) {
         final String lcrPosition = offsetContext.getLcrPosition();
         if (lcrPosition != null) {
             return LcrPosition.valueOf(lcrPosition).getRawPosition();
@@ -159,12 +154,13 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         return convertScnToPosition(offsetContext.getScn());
     }
 
-    private OracleConnection connectAndAttachWithRetries(JdbcConfiguration jdbcConfig, byte[] startPosition) throws Exception {
-        OracleConnection connection = null;
+    private DamengConnection connectAndAttachWithRetries(JdbcConfiguration jdbcConfig, byte[] startPosition) throws Exception {
+        DamengConnection connection = null;
         for (int attempt = 1; attempt <= DEFAULT_MAX_ATTACH_RETRIES; attempt++) {
             XStreamOut out = null;
             try {
-                connection = new OracleConnection(jdbcConfig);
+                connection = new DamengConnection(jdbcConfig);
+                //TODO 
                 out = XStreamOut.attach((oracle.jdbc.OracleConnection) connection.connection(), xStreamServerName,
                         startPosition, 1, 1, XStreamOut.DEFAULT_MODE);
 
@@ -187,7 +183,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                 }
             }
         }
-        throw new DebeziumException("Failed to attach to the Oracle XStream outbound server");
+        throw new DebeziumException("Failed to attach to the Dameng XStream outbound server");
     }
 
     private boolean isAttachExceptionRetriable(StreamsException e) {
@@ -230,8 +226,8 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         return lcrMessage.getAndSet(null);
     }
 
-    private static int resolvePosVersion(OracleConnection connection, OracleConnectorConfig connectorConfig) {
-        final OracleDatabaseVersion databaseVersion = connection.getOracleVersion();
+    private static int resolvePosVersion(DamengConnection connection, DamengConnectorConfig connectorConfig) {
+        final DamengDatabaseVersion databaseVersion = connection.getDamengVersion();
         if (databaseVersion.getMajor() == 11 || (databaseVersion.getMajor() == 12 && databaseVersion.getMaintenance() < 2)) {
             return XStreamUtility.POS_VERSION_V1;
         }

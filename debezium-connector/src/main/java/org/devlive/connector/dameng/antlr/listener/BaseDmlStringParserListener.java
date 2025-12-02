@@ -13,19 +13,15 @@ import org.devlive.connector.dameng.logminer.valueholder.LogMinerColumnValueWrap
 /**
  * This class parses recursively logical expression tree for DELETE and UPDATE statements
  */
-abstract class BaseDmlStringParserListener
-        extends BaseDmlParserListener<String>
-{
+abstract class BaseDmlStringParserListener extends BaseDmlParserListener<String> {
     boolean isUpdate;
 
-    BaseDmlStringParserListener(String catalogName, String schemaName, DamengDmlParser parser)
-    {
+    BaseDmlStringParserListener(String catalogName, String schemaName, DamengDmlParser parser) {
         super(catalogName, schemaName, parser);
     }
 
     @Override
-    public void enterTable_alias(PlSqlParser.Table_aliasContext ctx)
-    {
+    public void enterTable_alias(PlSqlParser.Table_aliasContext ctx) {
         alias = ctx.getText().toUpperCase();
     }
 
@@ -36,8 +32,7 @@ abstract class BaseDmlStringParserListener
      *
      * @param logicalExpression expression tree
      */
-    void parseRecursively(PlSqlParser.Logical_expressionContext logicalExpression)
-    {
+    void parseRecursively(PlSqlParser.Logical_expressionContext logicalExpression) {
         int count = logicalExpression.logical_expression().size();
         if (count == 0) {
             String nullValue = logicalExpression.getStop().getText();

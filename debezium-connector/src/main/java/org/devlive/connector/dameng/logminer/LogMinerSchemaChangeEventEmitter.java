@@ -14,11 +14,8 @@ import org.devlive.connector.dameng.logminer.valueholder.LogMinerDdlEntry;
 /**
  * {@link SchemaChangeEventEmitter} implementation based on Oracle LogMiner utility.
  */
-public class LogMinerSchemaChangeEventEmitter
-        extends BaseDamengSchemaChangeEventEmitter
-{
-    public LogMinerSchemaChangeEventEmitter(DamengOffsetContext offsetContext, TableId tableId, LogMinerDdlEntry ddlLcr)
-    {
+public class LogMinerSchemaChangeEventEmitter extends BaseDamengSchemaChangeEventEmitter {
+    public LogMinerSchemaChangeEventEmitter(DamengOffsetContext offsetContext, TableId tableId, LogMinerDdlEntry ddlLcr) {
         super(offsetContext,
                 tableId,
                 tableId.catalog(), // todo tableId should be enough

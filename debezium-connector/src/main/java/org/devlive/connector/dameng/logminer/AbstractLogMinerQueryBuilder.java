@@ -6,14 +6,14 @@
 package org.devlive.connector.dameng.logminer;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningQueryFilterMode;
 import io.debezium.relational.TableId;
 import io.debezium.util.Strings;
+import org.devlive.connector.dameng.DamengConnectorConfig;
 
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.devlive.connector.dameng.DamengConnectorConfig.*;
 
 /**
  * An abstract base implementation of {@link LogMinerQueryBuilder}.
@@ -30,10 +30,10 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
 
     public static final Integer IN_CLAUSE_MAX_ELEMENTS = 1000;
 
-    protected final OracleConnectorConfig connectorConfig;
+    protected final DamengConnectorConfig connectorConfig;
     protected final boolean useCteQuery;
 
-    public AbstractLogMinerQueryBuilder(OracleConnectorConfig connectorConfig) {
+    public AbstractLogMinerQueryBuilder(DamengConnectorConfig connectorConfig) {
         this.connectorConfig = connectorConfig;
         this.useCteQuery = connectorConfig.isLogMiningUseCteQuery();
     }
@@ -97,15 +97,15 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
      * @return the username predicate, may be an empty string if no predicate is generated
      */
     protected String getUserNamePredicate() {
-        if (!LogMiningQueryFilterMode.NONE.equals(connectorConfig.getLogMiningQueryFilterMode())) {
+        if (!DamengConnectorConfig.LogMiningQueryFilterMode.NONE.equals(connectorConfig.getLogMiningQueryFilterMode())) {
             // Only filter usernames when using IN and REGEX modes
             // Username filters always use an IN-clause predicate
             //
-            // Oracle always stores usernames as upper-case.
+            // Dameng always stores usernames as upper-case.
             // This predicate build applies upper-case to the provided value lists from the configuration.
             return IncludeExcludeInClause.builder()
                     .withField("USERNAME")
-                    .withFilterMode(LogMiningQueryFilterMode.IN)
+                    .withFilterMode(DamengConnectorConfig.LogMiningQueryFilterMode.IN)
                     .withDefaultIncludeValues(Collections.singletonList(UNKNOWN_USERNAME))
                     .withIncludeValues(connectorConfig.getLogMiningUsernameIncludes())
                     .withExcludeValues(connectorConfig.getLogMiningUsernameExcludes())
@@ -121,12 +121,12 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
      * @return the client id predicate, will be an empty string if no predicate is generated, never {@code null}
      */
     protected String getClientIdPredicate() {
-        if (!LogMiningQueryFilterMode.NONE.equals(connectorConfig.getLogMiningQueryFilterMode())) {
+        if (!DamengConnectorConfig.LogMiningQueryFilterMode.NONE.equals(connectorConfig.getLogMiningQueryFilterMode())) {
             // Only filter client ids when using IN and REGEX modes
             // Client id filters always use an IN-clause predicate
             return IncludeExcludeInClause.builder()
                     .withField("CLIENT_ID")
-                    .withFilterMode(LogMiningQueryFilterMode.IN)
+                    .withFilterMode(DamengConnectorConfig.LogMiningQueryFilterMode.IN)
                     .withIncludeValues(connectorConfig.getLogMiningClientIdIncludes())
                     .withExcludeValues(connectorConfig.getLogMiningClientIdExcludes())
                     .caseInsensitive()
@@ -147,8 +147,8 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
         final String includeList = connectorConfig.tableIncludeList();
         final String excludeList = connectorConfig.tableExcludeList();
 
-        final LogMiningQueryFilterMode queryFilterMode = connectorConfig.getLogMiningQueryFilterMode();
-        if (LogMiningQueryFilterMode.NONE.equals(queryFilterMode)) {
+        final DamengConnectorConfig.LogMiningQueryFilterMode queryFilterMode = connectorConfig.getLogMiningQueryFilterMode();
+        if (DamengConnectorConfig.LogMiningQueryFilterMode.NONE.equals(queryFilterMode)) {
             // No filters get applied
             return EMPTY;
         }
@@ -156,14 +156,14 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
             // No table filters provided, nothing to apply
             return EMPTY;
         }
-        else if (LogMiningQueryFilterMode.IN.equals(queryFilterMode)) {
+        else if (DamengConnectorConfig.LogMiningQueryFilterMode.IN.equals(queryFilterMode)) {
             final List<String> includeTableList = getTableIncludeExcludeListAsInValueList(includeList);
             final List<String> excludeTableList = getTableIncludeExcludeListAsInValueList(excludeList);
             final StringBuilder predicate = new StringBuilder();
             // Makes sure we get rows that have no TABLE_NAME or that have had an issue resolving the
             // table's object identifier due to a recent schema change causing a dictionary mismatch.
             predicate.append("(TABLE_NAME IS NULL OR ");
-            if (connectorConfig.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
+            if (connectorConfig.getLogMiningStrategy() == DamengConnectorConfig.LogMiningStrategy.HYBRID) {
                 predicate.append("TABLE_NAME LIKE '").append(UNKNOWN_TABLE_NAME_PREFIX).append("%' OR ");
             }
 
@@ -196,7 +196,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
             // Makes sure we get rows that have no TABLE_NAME or that have had an issue resolving the
             // table's object identifier due to a recent schema change causing a dictionary mismatch.
             predicate.append("(TABLE_NAME IS NULL OR ");
-            if (connectorConfig.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
+            if (connectorConfig.getLogMiningStrategy() == DamengConnectorConfig.LogMiningStrategy.HYBRID) {
                 predicate.append("TABLE_NAME LIKE '").append(UNKNOWN_TABLE_NAME_PREFIX).append("%' OR ");
             }
 
@@ -305,7 +305,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
         }
     }
 
-    private static Optional<TableId> getSignalDataCollectionId(OracleConnectorConfig connectorConfig) {
+    private static Optional<TableId> getSignalDataCollectionId(DamengConnectorConfig connectorConfig) {
         if (!Strings.isNullOrEmpty(connectorConfig.getSignalingDataCollectionId())) {
             return Optional.of(TableId.parse(connectorConfig.getSignalingDataCollectionId()));
         }
@@ -353,7 +353,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
     }
 
     private static List<String> getBuiltInExcludedSchemas() {
-        return toUpperCase(OracleConnectorConfig.EXCLUDED_SCHEMAS);
+        return toUpperCase(DamengConnectorConfig.EXCLUDED_SCHEMAS);
     }
 
     private static List<String> getTableIncludeExcludeListAsInValueList(String list) {
@@ -484,7 +484,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
             return this;
         }
 
-        public IncludeExcludeInClause withFilterMode(LogMiningQueryFilterMode mode) {
+        public IncludeExcludeInClause withFilterMode(DamengConnectorConfig.LogMiningQueryFilterMode mode) {
             this.mode = mode;
             return this;
         }
@@ -551,7 +551,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
     }
 
     /**
-     * Query helper to construct an Oracle SQL REGEXP_LIKE list based on include/exclude value lists
+     * Query helper to construct an Dameng SQL REGEXP_LIKE list based on include/exclude value lists
      */
     private static class IncludeExcludeRegExpLike {
         private String fieldName;
@@ -623,7 +623,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
         private String preparePattern(Pattern pattern) {
             // Connector configuration include/exclude lists are meant to match with an implied "^" and "$"
             // regular expression qualifiers. If the provided pattern does not explicitly include these,
-            // this method will add those so that Oracle's REGEXP_LIKE does not match sub-text
+            // this method will add those so that Dameng's REGEXP_LIKE does not match sub-text
             String patternText = pattern.pattern();
             if (!patternText.startsWith("^")) {
                 patternText = "^" + patternText;

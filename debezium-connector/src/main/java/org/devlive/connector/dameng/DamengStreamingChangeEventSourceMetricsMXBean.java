@@ -13,9 +13,7 @@ import java.util.Set;
 /**
  * The JMX exposed interface for Oracle streaming metrics.
  */
-public interface DamengStreamingChangeEventSourceMetricsMXBean
-        extends StreamingChangeEventSourceMetricsMXBean
-{
+public interface DamengStreamingChangeEventSourceMetricsMXBean extends StreamingChangeEventSourceMetricsMXBean {
     /**
      * @return the current system change number of the database
      */

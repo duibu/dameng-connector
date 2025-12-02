@@ -5,7 +5,8 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.ehcache.serialization;
 
-import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
+
+import org.devlive.connector.dameng.logminer.event.XmlBeginEvent;
 
 import java.io.IOException;
 

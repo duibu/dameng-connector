@@ -5,7 +5,7 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.infinispan;
 
-import io.debezium.connector.oracle.logminer.buffered.LogMinerCache;
+import org.devlive.connector.dameng.logminer.buffered.LogMinerCache;
 import org.infinispan.client.hotrod.Flag;
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.commons.api.BasicCache;

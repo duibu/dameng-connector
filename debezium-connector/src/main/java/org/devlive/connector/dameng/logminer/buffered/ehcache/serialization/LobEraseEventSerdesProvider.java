@@ -5,7 +5,8 @@
  */
 package org.devlive.connector.dameng.logminer.buffered.ehcache.serialization;
 
-import io.debezium.connector.oracle.logminer.events.LobEraseEvent;
+
+import org.devlive.connector.dameng.logminer.event.LobEraseEvent;
 
 /**
  * A specialized implementation of {@link SerdesProvider} for {@link LobEraseEvent} types.

@@ -7,7 +7,6 @@ package org.devlive.connector.dameng.xstream;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
-import io.debezium.connector.oracle.*;
 import io.debezium.document.Document;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -21,8 +20,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
-import oracle.streams.StreamsException;
-import oracle.streams.XStreamUtility;
+import org.devlive.connector.dameng.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +29,7 @@ import java.util.Collections;
 import java.util.Optional;
 
 /**
- * The streaming adapter implementation for Oracle XStream.
+ * The streaming adapter implementation for Dameng XStream.
  *
  * @author Chris Cranford
  */
@@ -41,7 +39,7 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
 
     public static final String TYPE = "xstream";
 
-    public XStreamAdapter(OracleConnectorConfig connectorConfig) {
+    public XStreamAdapter(DamengConnectorConfig connectorConfig) {
         super(connectorConfig);
     }
 
@@ -68,17 +66,17 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
     }
 
     @Override
-    public OffsetContext.Loader<OracleOffsetContext> getOffsetContextLoader() {
+    public OffsetContext.Loader<DamengOffsetContext> getOffsetContextLoader() {
         return new XStreamDamengOffsetContextLoader(connectorConfig);
     }
 
     @Override
-    public StreamingChangeEventSource<OraclePartition, OracleOffsetContext> getSource(OracleConnection connection,
-                                                                                      EventDispatcher<OraclePartition, TableId> dispatcher,
+    public StreamingChangeEventSource<DamengPartition, DamengOffsetContext> getSource(DamengConnection connection,
+                                                                                      EventDispatcher<DamengPartition, TableId> dispatcher,
                                                                                       ErrorHandler errorHandler,
                                                                                       Clock clock,
-                                                                                      OracleDatabaseSchema schema,
-                                                                                      OracleTaskContext taskContext,
+                                                                                      DamengDatabaseSchema schema,
+                                                                                      DamengTaskContext taskContext,
                                                                                       Configuration jdbcConfig,
                                                                                       XStreamStreamingChangeEventSourceMetrics streamingMetrics,
                                                                                       SnapshotterService snapshotterService) {
@@ -93,26 +91,26 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
     }
 
     @Override
-    public XStreamStreamingChangeEventSourceMetrics getStreamingMetrics(OracleTaskContext taskContext,
+    public XStreamStreamingChangeEventSourceMetrics getStreamingMetrics(DamengTaskContext taskContext,
                                                                         ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                         EventMetadataProvider metadataProvider,
-                                                                        OracleConnectorConfig connectorConfig) {
+                                                                        DamengConnectorConfig connectorConfig) {
         return new XStreamStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
     }
 
     @Override
-    public TableNameCaseSensitivity getTableNameCaseSensitivity(OracleConnection connection) {
-        // Always use tablename case insensitivity true when on Oracle 11, otherwise false.
-        if (connection.getOracleVersion().getMajor() == 11) {
+    public TableNameCaseSensitivity getTableNameCaseSensitivity(DamengConnection connection) {
+        // Always use tablename case insensitivity true when on Dameng 11, otherwise false.
+        if (connection.getDamengVersion().getMajor() == 11) {
             return TableNameCaseSensitivity.SENSITIVE;
         }
         return super.getTableNameCaseSensitivity(connection);
     }
 
     @Override
-    public OracleOffsetContext determineSnapshotOffset(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx,
-                                                       OracleConnectorConfig connectorConfig,
-                                                       OracleConnection connection)
+    public DamengOffsetContext determineSnapshotOffset(RelationalSnapshotContext<DamengPartition, DamengOffsetContext> ctx,
+                                                       DamengConnectorConfig connectorConfig,
+                                                       DamengConnection connection)
             throws SQLException {
 
         final Optional<Scn> latestTableDdlScn = getLatestTableDdlScn(ctx, connection);
@@ -128,7 +126,7 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
 
         LOGGER.info("\tCurrent SCN resolved as {}", currentScn);
 
-        return OracleOffsetContext.create()
+        return DamengOffsetContext.create()
                 .logicalName(connectorConfig)
                 .scn(currentScn)
                 .snapshotScn(currentScn)
@@ -139,7 +137,7 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
     }
 
     @Override
-    public Scn getOffsetScn(OracleOffsetContext offsetContext) {
+    public Scn getOffsetScn(DamengOffsetContext offsetContext) {
 
         final byte[] startPosition;
         String lcrPosition = offsetContext.getLcrPosition();
@@ -160,7 +158,7 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
     }
 
     @Override
-    public OracleOffsetContext copyOffset(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext) {
+    public DamengOffsetContext copyOffset(DamengConnectorConfig connectorConfig, DamengOffsetContext offsetContext) {
         return new XStreamDamengOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
     }
 
