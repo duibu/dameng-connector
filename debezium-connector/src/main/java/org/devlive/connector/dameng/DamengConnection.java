@@ -87,7 +87,7 @@ public class DamengConnection
     {
         // return JdbcConnection.patternBasedFactory(connectionString(config));
         return JdbcConnection.patternBasedFactory(
-                "jdbc:dm://${hostname}:${port}/${dbname}",
+                "jdbc:dm://${hostname}:${port}/${dbname}?lobPrefetchSize=65536",
                 "dm.jdbc.driver.DmDriver",
                 DamengConnection.class.getClassLoader());
     }

@@ -16,7 +16,7 @@ public class JdbcUrlUtils
             String hostname = properties.getProperty("database.hostname");
             String port = properties.getProperty("database.port");
             String dbname = properties.getProperty("database.dbname");
-            url = "jdbc:dm://" + hostname + ":" + port + "/" + dbname;
+            url = "jdbc:dm://" + hostname + ":" + port + "/" + dbname + "?lobPrefetchSize=65536";
         }
         return url;
     }
