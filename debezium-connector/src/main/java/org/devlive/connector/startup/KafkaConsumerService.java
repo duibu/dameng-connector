@@ -29,9 +29,9 @@ public class KafkaConsumerService {
         consumer.subscribe(Collections.singletonList(topic));
 
         LOGGER.info("Kafka consumer subscribed to topic: {}", topic);
-
-        while (running) {
-            try {
+        
+        try {
+            while (running) {
                 ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(1000));
 
                 for (ConsumerRecord<String, String> record : records) {
@@ -40,20 +40,20 @@ public class KafkaConsumerService {
 
                 // 手动提交 offset
                 consumer.commitSync();
-
-            } catch (WakeupException e) {
-                if (running) {
-                    LOGGER.error("Consumer wakeup exception", e);
-                }
-            } catch (Exception e) {
-                LOGGER.error("Error polling records", e);
-                try {
-                    Thread.sleep(5000); // 错误后等待重试
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
             }
+        } catch (WakeupException e) {
+            if (running) {
+                LOGGER.error("Consumer wakeup exception", e);
+            }
+        } catch (Exception e) {
+            LOGGER.error("Error polling records", e);
+            try {
+                Thread.sleep(5000); // 错误后等待重试
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+            }
+        } finally {
+            consumer.close();
         }
     }
 
@@ -78,11 +78,6 @@ public class KafkaConsumerService {
     public void stop() {
         running = false;
         consumer.wakeup();
-        try {
-            consumer.close(Duration.ofSeconds(30));
-        } catch (Exception e) {
-            LOGGER.error("Error closing consumer", e);
-        }
     }
     
 }

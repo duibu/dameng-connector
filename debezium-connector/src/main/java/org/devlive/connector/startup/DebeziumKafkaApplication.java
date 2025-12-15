@@ -224,22 +224,22 @@ public class DebeziumKafkaApplication {
         LOGGER.info("Shutting down application...");
 
         try {
-            // 停止 consumer
-            consumerService.stop();
-            consumerExecutor.shutdown();
-            if (!consumerExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
-                consumerExecutor.shutdownNow();
-            }
-
             // 停止 engine
             engine.close();
             engineExecutor.shutdown();
             if (!engineExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
                 engineExecutor.shutdownNow();
             }
-
+            
             // 关闭 producer
             KafkaProducerManager.getInstance().close();
+            
+            // 停止 consumer
+            consumerService.stop();
+            consumerExecutor.shutdown();
+            if (!consumerExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                consumerExecutor.shutdownNow();
+            }
 
             // 关闭数据库连接池
             JdbcQueryUtils.close();
