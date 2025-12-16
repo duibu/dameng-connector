@@ -1,9 +1,11 @@
 package org.devlive.connector.startup;
 
+import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.format.Json;
+import org.apache.commons.lang3.StringUtils;
 import org.devlive.connector.dameng.JdbcQueryUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,6 +71,7 @@ public class DebeziumKafkaApplication {
 
     /**
      * 处理 Debezium CDC 变更事件
+     * 处理数据，变换schema，解密数据
      */
     private void handleChangeEvent(ChangeEvent<String, String> record) {
         try {
@@ -77,8 +80,23 @@ public class DebeziumKafkaApplication {
 
             LOGGER.debug("Received change event: {}", value);
 
+            JSONObject recordKey = JSONObject.parseObject(key);
             JSONObject recordValue = JSONObject.parseObject(value);
             JSONObject payload = recordValue.getJSONObject("payload");
+
+            // 数据表的主键
+            String primaryKey = null;
+            
+            JSONObject schema = recordKey.getJSONObject("schema");
+            JSONArray fields = schema.getJSONArray("fields");
+            if (fields != null && !fields.isEmpty()) {
+                primaryKey = fields.getJSONObject(0).getString("field");
+            }
+            
+            if (StringUtils.isBlank(primaryKey)) {
+                LOGGER.warn("Primary key is null, skipping record");
+                return;
+            }
 
             if (payload == null) {
                 LOGGER.warn("Payload is null, skipping record");
@@ -100,23 +118,28 @@ public class DebeziumKafkaApplication {
             for (Map.Entry<String, Object> entry : after.entrySet()) {
                 String fieldKey = entry.getKey();
                 Object fieldValue = entry.getValue();
+                
+                if (primaryKey.equalsIgnoreCase(fieldKey) && fieldValue == null) {
+                    continue;
+                }
 
                 if ("OUT_CLOB".equalsIgnoreCase(String.valueOf(fieldValue))) {
                     isChange = true;
 
-                    String laId = after.getString("LA_ID");
+                    String laId = after.getString(primaryKey);
                     if (laId == null || laId.isEmpty()) {
-                        LOGGER.warn("LA_ID is null or empty, cannot query CLOB");
+                        LOGGER.warn("primaryKey is null or empty, cannot query CLOB");
                         canSend = false;
                         continue;
                     }
 
                     // 查询实际的 CLOB 值
                     String sql = String.format(
-                            "SELECT %s FROM %s.%s WHERE LA_ID = ?",
+                            "SELECT %s FROM %s.%s WHERE %s = ?",
                             fieldKey,
                             source.getString("schema"),
-                            source.getString("table")
+                            source.getString("table"),
+                            primaryKey
                     );
 
                     try {
@@ -131,13 +154,15 @@ public class DebeziumKafkaApplication {
                 }
 
                 // 处理 ID 字段
-                if ("id".equalsIgnoreCase(fieldKey)) {
-                    String laId = after.getString("LA_ID");
+                if ("id".equalsIgnoreCase(fieldKey) && fieldValue == null) {
+                    isChange = true;
+                    String laId = after.getString(primaryKey);
                     if (laId != null && !laId.isEmpty()) {
                         String idSql = String.format(
-                                "SELECT id FROM %s.%s WHERE LA_ID = ?",
+                                "SELECT id FROM %s.%s WHERE %s = ?",
                                 source.getString("schema"),
-                                source.getString("table")
+                                source.getString("table"),
+                                primaryKey
                         );
 
                         try {
@@ -147,15 +172,51 @@ public class DebeziumKafkaApplication {
                             }
                         } catch (Exception e) {
                             LOGGER.error("Failed to query ID field", e);
+                            canSend = false;
+                        }
+                    }
+                }
+
+                // 处理 ID 字段
+                if (fieldValue != null && StringUtils.isBlank(fieldValue.toString())) {
+                    isChange = true;
+                    String laId = after.getString(primaryKey);
+                    if (laId != null && !laId.isEmpty()) {
+                        String idSql = String.format(
+                                "SELECT %s FROM %s.%s WHERE %s = ?",
+                                fieldKey,
+                                source.getString("schema"),
+                                source.getString("table"),
+                                primaryKey
+                        );
+
+                        try {
+                            Map<String, Object> result = JdbcQueryUtils.queryOne(idSql, laId);
+                            if (result != null && result.get(fieldKey) != null) {
+                                after.put(fieldKey, result.get(fieldKey).toString().trim());
+                            }
+                        } catch (Exception e) {
+                            LOGGER.error("Failed to query ID field", e);
+                            canSend = false;
                         }
                     }
                 }
             }
 
+            String sourceSchemaName = source.getString("table");
+            String databaseByTableName = DataTableConfig.getDatabaseByTableName(sourceSchemaName.toLowerCase());
+            if (StringUtils.isNotBlank(databaseByTableName)) {
+                isChange = true;
+                source.put("schema", databaseByTableName);
+                source.put("db", databaseByTableName);
+            }
+
+            System.out.println(recordValue);
+
             String message = isChange ? recordValue.toString() : value;
 
             if (canSend) {
-                String topic = "data-sync-dm-theling-1";
+                String topic = "data-sync-dm-to-mysql." + databaseByTableName;
                 KafkaProducerManager.getInstance().sendMessage(topic, key, message);
             }
 

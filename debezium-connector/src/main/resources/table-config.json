@@ -1,0 +1,223 @@
+{
+  "jyfw_cloud": {
+    "table_list": [
+      {
+        "table_name": "busi_approval_licence"
+      },
+      {
+        "table_name": "busi_approval_licence_map"
+      },
+      {
+        "table_name": "busi_approval_other"
+      },
+      {
+        "table_name": "busi_approval_other_map"
+      },
+      {
+        "table_name": "busi_code_rule"
+      },
+      {
+        "table_name": "busi_industry"
+      },
+      {
+        "table_name": "busi_industry_classify"
+      },
+      {
+        "table_name": "busi_industry_statement"
+      },
+      {
+        "table_name": "busi_industry_statement_classify"
+      },
+      {
+        "table_name": "busi_industry_statement_map"
+      },
+      {
+        "table_name": "busi_industry_statement_nonmain"
+      },
+      {
+        "table_name": "busi_industry_statement_split"
+      },
+      {
+        "table_name": "busi_items_record"
+      },
+      {
+        "table_name": "busi_law"
+      },
+      {
+        "table_name": "busi_law_map"
+      },
+      {
+        "table_name": "busi_scope_items"
+      },
+      {
+        "table_name": "busi_scope_items_label"
+      },
+      {
+        "table_name": "busi_scope_items_label_map"
+      },
+      {
+        "table_name": "busi_scope_items_label_redis"
+      },
+      {
+        "table_name": "busi_scope_items_label_verify"
+      },
+      {
+        "table_name": "busi_scope_items_search"
+      },
+      {
+        "table_name": "busi_theme"
+      },
+      {
+        "table_name": "busi_theme_map"
+      },
+      {
+        "table_name": "work_order_flow"
+      },
+      {
+        "table_name": "work_order_list"
+      }
+    ]
+  },
+  "base_server": {
+    "table_list": [
+      {
+        "table_name": "sys_category_tree"
+      },
+      {
+        "table_name": "sys_category_tree_assist"
+      },
+      {
+        "table_name": "sys_category_tree_map"
+      },
+      {
+        "table_name": "sys_category_tree_record"
+      },
+      {
+        "table_name": "sys_department_section"
+      },
+      {
+        "table_name": "sys_dictionary_group"
+      },
+      {
+        "table_name": "sys_district"
+      },
+      {
+        "table_name": "sys_district_building"
+      },
+      {
+        "table_name": "sys_institution_identity"
+      },
+      {
+        "table_name": "sys_role"
+      },
+      {
+        "table_name": "sys_role_map"
+      },
+      {
+        "table_name": "sys_role_rule"
+      },
+      {
+        "table_name": "sys_user"
+      },
+      {
+        "table_name": "sys_user_assist"
+      },
+      {
+        "table_name": "sys_user_change"
+      },
+      {
+        "table_name": "sys_user_device"
+      },
+      {
+        "table_name": "sys_user_openid"
+      },
+      {
+        "table_name": "sys_user_rank"
+      },
+      {
+        "table_name": "sys_user_role_apply"
+      },
+      {
+        "table_name": "sys_web_page"
+      },
+      {
+        "table_name": "sys_department"
+      },
+      {
+        "table_name": "sys_file"
+      }
+    ]
+  },
+  "ent_basic_data": {
+    "table_list": [
+      {
+        "table_name": "assist_map"
+      },
+      {
+        "table_name": "assist_review_element"
+      },
+      {
+        "table_name": "assist_review_element_base"
+      },
+      {
+        "table_name": "assist_review_element_new"
+      },
+      {
+        "table_name": "assist_review_link"
+      },
+      {
+        "table_name": "assist_review_plate"
+      },
+      {
+        "table_name": "assist_review_point"
+      },
+      {
+        "table_name": "assist_review_point_new"
+      },
+      {
+        "table_name": "assist_review_rule"
+      },
+      {
+        "table_name": "assist_review_target"
+      },
+      {
+        "table_name": "assist_tag"
+      },
+      {
+        "table_name": "assist_tag_map"
+      }
+    ]
+  },
+  "jyfw_business_record": {
+    "table_list": [
+      {
+        "table_name": "content_tag_record"
+      },
+      {
+        "table_name": "publicity_base"
+      },
+      {
+        "table_name": "publicity_record"
+      },
+      {
+        "table_name": "publicity_work_flow"
+      },
+      {
+        "table_name": "publicity_work_list"
+      }
+    ]
+  },
+  "jyfw_ops": {
+    "table_list": [
+      {
+        "table_name": "api_module"
+      },
+      {
+        "table_name": "api_module_map"
+      },
+      {
+        "table_name": "sys_dictionary"
+      }
+    ]
+  }
+}
