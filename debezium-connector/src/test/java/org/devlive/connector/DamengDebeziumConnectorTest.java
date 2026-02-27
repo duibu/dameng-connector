@@ -7,7 +7,7 @@ import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.format.Json;
 import io.debezium.relational.history.FileDatabaseHistory;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
-import org.devlive.connector.dameng.JdbcQueryUtils;
+import org.devlive.connector.startup.JdbcQueryUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
